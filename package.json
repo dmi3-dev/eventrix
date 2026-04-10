@@ -1,0 +1,34 @@
+{
+  "name": "eventrix",
+  "private": true,
+  "version": "0.1.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "sim": "evenhub-simulator http://localhost:5173",
+    "qr": "evenhub qr --url http://192.168.1.131:5173"
+  },
+  "dependencies": {
+    "@evenrealities/even_hub_sdk": "^0.0.9",
+    "lodash.isequal": "^4.5.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@evenrealities/evenhub-cli": "^0.1.11",
+    "@evenrealities/evenhub-simulator": "^0.7.1",
+    "@types/lodash.isequal": "^4.5.8",
+    "eslint": "^10.2.0",
+    "prettier": "^3.8.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.58.0",
+    "vite": "^8.0.8"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "tabWidth": 2,
+    "arrowParens": "avoid"
+  }
+}
