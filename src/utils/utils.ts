@@ -20,13 +20,16 @@
  * SOFTWARE.
  */
 
-import './style.css';
-import MatrixRain from './app/controller.ts';
+import { MONO_MATRIX_CHARS, MONO_SPACE } from './consts.ts';
 
-const main = async () => {
-  MatrixRain.inst.renderApp();
-  await MatrixRain.inst.start();
-  await MatrixRain.inst.reRenderGlasses();
+/** converts string of regular ascii characters to monospace unicode characters */
+export const toMonospace = (text: string): string => {
+  return text.replace(/[ -~]/g, ch => {
+    if (ch === ' ') return MONO_SPACE;
+    const code = ch.charCodeAt(0);
+    return String.fromCharCode(code + 0xfee0);
+  });
 };
 
-main();
+export const getRandomMatrixChar = () =>
+  MONO_MATRIX_CHARS[Math.floor(Math.random() * MONO_MATRIX_CHARS.length)];

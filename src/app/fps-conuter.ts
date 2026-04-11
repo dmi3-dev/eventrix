@@ -20,13 +20,33 @@
  * SOFTWARE.
  */
 
-import './style.css';
-import MatrixRain from './app/controller.ts';
+import { toMonospace } from '../utils/utils.ts';
 
-const main = async () => {
-  MatrixRain.inst.renderApp();
-  await MatrixRain.inst.start();
-  await MatrixRain.inst.reRenderGlasses();
-};
+export default class FpsConuter {
+  private static _fps = 0;
+  private static _frame = 0;
+  private static _lastTime = performance.now();
 
-main();
+  static get fps(): number {
+    return FpsConuter._fps;
+  }
+
+  static get fpsString(): string {
+    return `${FpsConuter.fps}`;
+  }
+
+  static get fpsMonoString(): string {
+    return toMonospace(FpsConuter.fpsString);
+  }
+
+  static countFps = () => {
+    FpsConuter._frame++;
+    const now = performance.now();
+    const delta = now - FpsConuter._lastTime;
+    if (delta > 1000) {
+      FpsConuter._fps = Math.round((FpsConuter._frame * 1000) / delta);
+      FpsConuter._lastTime = now;
+      FpsConuter._frame = 0;
+    }
+  };
+}

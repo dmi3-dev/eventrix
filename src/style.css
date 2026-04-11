@@ -1,3 +1,7 @@
+:root {
+  --green: #1d1;
+}
+
 html,
 body {
   margin: 0;
@@ -5,28 +9,70 @@ body {
   height: 100%;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   display: flex;
-  align-items: center;
+  align-items: start;
   justify-content: center;
   font-family: "Courier New", Courier, monospace;
   background: #111;
-  color: #1a1;
+  color: #ddd;
+  padding: 1rem;
 }
 
 #app {
-  width: 100%;
+  flex: 1;
+  height: 100%;
 }
 
-.hello-eventrix {
+.app {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
+  flex-direction: column;
+  height: 100%;
 }
 
-.hello-eventrix h1 {
-  margin: 0;
-  font-size: 3rem;
-  font-weight: 700;
+.title {
+  text-align: center;
+  color: var(--green);
+}
+
+.description {
+  text-align: left;
+}
+
+.code {
+  color: var(--green);
+  flex: 1;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow: scroll;
+  word-break: break-word;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem;
+}
+
+.button {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 1.2rem;
+  background: #000;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  color: #ddd;
+}
+
+.highlight {
+  color: var(--green);
+  font-weight: bold;
+  font-size: 1.1rem;
 }

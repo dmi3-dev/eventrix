@@ -20,13 +20,9 @@
  * SOFTWARE.
  */
 
-import './style.css';
-import MatrixRain from './app/controller.ts';
-
-const main = async () => {
-  MatrixRain.inst.renderApp();
-  await MatrixRain.inst.start();
-  await MatrixRain.inst.reRenderGlasses();
+export type Drop = {
+  head: number;
+  tail: number;
+  step: number;
+  interval: number;
 };
-
-main();

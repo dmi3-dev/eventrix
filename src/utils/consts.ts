@@ -21,19 +21,30 @@
  */
 
 export const VIEW = {
-  WIDTH: 576,
-  HEIGHT: 288,
+  width: 576,
+  height: 288,
 };
 
+// this is how many monospace characters can fit in the view
 export const MATRIX = {
-  WIDTH: 28,
-  HEIGHT: 9,
+  width: 28,
+  height: 10,
 };
 
-export const MONO_EMPTY_SPACE = '\u3000';
+// making buffer less than can fit, because some combo of characters
+// makes it go next line, overflowing buffer and adding visible scrollbar
+// using this hack until I find that combo and remove it
+export const BUF_SIZE = MATRIX.width * MATRIX.height - 2;
+
+export const MATRIX_TEXT_ID = 1234;
+export const DEFAULT_DPS = 5;
+export const MIN_DPS = 1;
+export const MAX_DPS = 42;
+
+export const MONO_SPACE = '\u3000';
 export const MONO_MATRIX_CHARS =
-  'カㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦ' +
-  '个丫丬中丮丰丱串丳临〆丸丹为主丼丽乂乃久乇么义日月火水木' +
-  '金土年月時分秒人大小中上下左右前後東西南北々０１２３４５' +
-  '６７８９ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸ' +
-  'ＹＺａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ';
+  'ㄌㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦ个丫丬中丮丰丱串丳临〆丸' +
+  '丹为々主丼丽乂乃久乇么义日火水木金土年月時分秒人大' +
+  '小上下左右前後東西南北０１２３４５６７８９ＡＢＣＤ' +
+  'ＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺａｂｃ' +
+  'ｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ＄＆';
