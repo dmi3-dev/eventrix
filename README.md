@@ -1,8 +1,10 @@
 # eventrix
 Most useless app on EvenHub, but it would be wrong not to make it for this display.
 
+![screenshot](./docs/preview.png)
+
 ### fun and discoveries
-Figured out how to draw monospace ascii and other unicode characters, check `./src/utils/utils.ts` and `.src/utils/consts.ts` 
+Figured out how to draw monospace ascii and other unicode characters, check [utils.ts](./src/utils/utils.ts) for function and [consts.ts](./src/utils/consts.ts) for set of characters
 
 ### dev
 
