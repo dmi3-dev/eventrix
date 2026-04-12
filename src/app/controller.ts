@@ -110,10 +110,10 @@ export default class MatrixRain {
     if (this._dropsPerSec < 1) this._dropsPerSec = 1;
 
     this._dropGenTimer = setInterval(
-      this.generateDrop,
+      this._generateDrop,
       1000 / this._dropsPerSec,
     );
-    this._runTimer = setInterval(this.processDrops, 200);
+    this._runTimer = setInterval(this._processDrops, 200);
   };
 
   stop = () => {
@@ -121,11 +121,13 @@ export default class MatrixRain {
     clearInterval(this._dropGenTimer);
     this._runTimer = undefined;
     this._dropGenTimer = undefined;
+    this._showFps = false;
+    this._showDps = false;
     this._buffer = new Array(BUF_SIZE).fill(MONO_SPACE);
     this._drops.clear();
-    this._dropsPerSec = DEFAULT_DPS;
     this._dpsStringLength = 0;
     this._log = '';
+    this.reRenderGlasses();
   };
 
   /** minimal html for app web view */
@@ -146,20 +148,20 @@ export default class MatrixRain {
       <div class="code">${this._log}</div>
 
       <div class="row">
-        <button class="button" id="restartButton">RESET</button>
-        <button class="button" id="exitButton">EXIT</button>
+        <button class="button" id="playButton">${this._runTimer ? 'STOP' : 'START'}</button>
       </div>
     </div>
   `;
 
-    const exitButton = document.querySelector<HTMLButtonElement>('#exitButton');
-    exitButton?.addEventListener('click', () => {
-      this._bridge?.shutDownPageContainer(1);
-    });
-    const restartButton =
-      document.querySelector<HTMLButtonElement>('#restartButton');
-    restartButton?.addEventListener('click', () => {
-      this.start();
+    const playButton =
+      document.querySelector<HTMLButtonElement>('#playButton')!;
+
+    playButton?.addEventListener('click', () => {
+      if (!this._runTimer) {
+        this.start();
+      } else {
+        this.stop();
+      }
       this.renderApp();
     });
   };
@@ -191,13 +193,27 @@ export default class MatrixRain {
     if (this._runTimer) await this.reRenderGlasses();
   };
 
-  toggleFps = () => {
+  /** for dev use */
+  log = (msg: any) => {
+    if (!this._logEnabled) return;
+
+    if (typeof msg !== 'string') {
+      msg = JSON.stringify(msg, null, 2);
+    }
+    this._log = msg;
+    // enable during dev
+    this.renderApp();
+  };
+
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ private methods ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  private _toggleFps = () => {
     this._showFps = !this._showFps;
     this._buffer[0] = MONO_SPACE;
     this._buffer[1] = MONO_SPACE;
   };
 
-  setDps = (dps: number) => {
+  private _setDps = (dps: number) => {
     this._dropsPerSec = Math.max(MIN_DPS, Math.min(MAX_DPS, dps));
     this._showDps = true;
 
@@ -213,13 +229,13 @@ export default class MatrixRain {
     // change drop generation interval
     clearInterval(this._dropGenTimer);
     this._dropGenTimer = setInterval(
-      this.generateDrop,
+      this._generateDrop,
       1000 / this._dropsPerSec,
     );
     this.renderApp();
   };
 
-  generateDrop = () => {
+  private _generateDrop = () => {
     const head = Math.floor(Math.random() * MATRIX.width);
     const len = Math.ceil(Math.random() * MATRIX.height) + 3;
     const tail = head - len * MATRIX.width;
@@ -228,7 +244,7 @@ export default class MatrixRain {
   };
 
   /* Processing drop objects to add characters to buffer */
-  processDrops = () => {
+  private _processDrops = () => {
     for (const drop of this._drops) {
       if (drop.head < BUF_SIZE) {
         // we only add characters to buffer if head is within bounds
@@ -253,20 +269,6 @@ export default class MatrixRain {
     }
   };
 
-  /** for dev use */
-  log = (msg: any) => {
-    if (!this._logEnabled) return;
-
-    if (typeof msg !== 'string') {
-      msg = JSON.stringify(msg, null, 2);
-    }
-    this._log = msg;
-    // enable during dev
-    this.renderApp();
-  };
-
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ private methods ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
   private _setupEvents = () => {
     this._bridge?.onEvenHubEvent(event => {
       const { textEvent, sysEvent } = event;
@@ -282,7 +284,7 @@ export default class MatrixRain {
 
           // click event is always undefined
         } else if (!sysEvent.eventType) {
-          this.toggleFps();
+          this._toggleFps();
         }
       }
 
@@ -291,16 +293,16 @@ export default class MatrixRain {
         switch (eventType) {
           case OsEventTypeList.CLICK_EVENT:
           case undefined: // SDK normalizes 0 to undefined in some cases
-            this.toggleFps();
+            this._toggleFps();
             break;
           case OsEventTypeList.DOUBLE_CLICK_EVENT:
             this._bridge?.shutDownPageContainer(1);
             break;
           case OsEventTypeList.SCROLL_TOP_EVENT:
-            this.setDps(this._dropsPerSec + 1);
+            this._setDps(this._dropsPerSec + 1);
             break;
           case OsEventTypeList.SCROLL_BOTTOM_EVENT:
-            this.setDps(this._dropsPerSec - 1);
+            this._setDps(this._dropsPerSec - 1);
             break;
           default:
             break;

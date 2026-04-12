@@ -71,6 +71,11 @@ body {
   color: #ddd;
 }
 
+.button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .highlight {
   color: var(--green);
   font-weight: bold;
