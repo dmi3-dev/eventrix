@@ -38,7 +38,7 @@ import {
   MONO_SPACE,
   VIEW,
 } from '../utils/consts.ts';
-import type { Drop } from '../utils/types.ts';
+import type { Drop, Intro, Stage } from '../utils/types.ts';
 import { getRandomMatrixChar, toMonospace } from '../utils/utils.ts';
 import FpsConuter from './fps-conuter.ts';
 
@@ -63,13 +63,33 @@ export default class MatrixRain {
   private _dpsSetTimer?: number;
 
   // drpos rendered on screen
-  private _drops = new Set<Drop>();
-  private _buffer: string[] = [];
+  private readonly _drops = new Set<Drop>();
+  private readonly _buffer: string[] = new Array(BUF_SIZE).fill(MONO_SPACE);
   private _dropsPerSec = DEFAULT_DPS;
 
+  private _process: Record<Stage, () => void> = {
+    wakeup: () => this._processIntro(),
+    hasYou: () => this._processIntro(),
+    rain: () => this._processDrops(),
+  };
+  private _stage: Stage = 'wakeup';
+  private _isRunning = false;
   private _showFps = false;
   private _showDps = false;
   private _logEnabled = false;
+  private _intro: Intro = {
+    wakeup: 'Wake up, Neo...',
+    hasYou: toMonospace('The Eventrix has you...'),
+    step: 0,
+    interval: 2,
+    wakeupOffset: 0,
+    hasOffset: 0,
+  };
+  private _interval: Record<Stage, number> = {
+    wakeup: 210, // giving it slightly more time than typical glasses refresh rate
+    hasYou: 210,
+    rain: 200,
+  };
   private _log = '';
   private _dpsStringLength = 0;
 
@@ -78,6 +98,31 @@ export default class MatrixRain {
     if (!this._bridge) {
       this._bridge = await waitForEvenAppBridge();
     }
+
+    // updating wakeup message with actual username
+    const userInfo = await this._bridge.getUserInfo();
+    const fifthRow = MATRIX.width * 4;
+    const center = MATRIX.width / 2 + fifthRow;
+    let wakeup = `Wake up, ${userInfo.name}...`;
+    this._intro.wakeupOffset = Math.floor(center - wakeup.length / 2);
+
+    if (wakeup.length > MATRIX.width - 1) {
+      // uername is too long and won't fit, so we break the message with new lines
+      wakeup = `Wake up,\n${userInfo.name}\n...`;
+      this._intro.wakeupOffset = Math.floor(fifthRow);
+
+      // we added \n which make buffer overflow and show scrollbar in text contrainer
+      // clearing all rows after where we show the text to aovoid it
+      // it's ok, it will be reset to proper mono space buffer after wakeup stage
+      for (let i = center; i < BUF_SIZE; i++) {
+        this._buffer[i] = '';
+      }
+    }
+
+    this._intro.wakeup = toMonospace(wakeup);
+
+    // also calculating offset for next message
+    this._intro.hasOffset = Math.floor(center - this._intro.hasYou.length / 2);
 
     const pageContainer = new CreateStartUpPageContainer({
       containerTotalNum: 2,
@@ -105,29 +150,33 @@ export default class MatrixRain {
   start = async (withLogEnabled = false) => {
     this._logEnabled = withLogEnabled;
     this.stop();
+    this._log = '';
     if (!this._bridge) await this.initialize();
 
     if (this._dropsPerSec < 1) this._dropsPerSec = 1;
 
-    this._dropGenTimer = setInterval(
-      this._generateDrop,
-      1000 / this._dropsPerSec,
-    );
-    this._runTimer = setInterval(this._processDrops, 200);
+    // adding delay before start, because Even App tend to lag on startup
+    setTimeout(() => this._setStage('wakeup'), 1000);
+    this._isRunning = true;
+    this.renderApp();
   };
 
   stop = () => {
+    this._isRunning = false;
     clearInterval(this._runTimer);
     clearInterval(this._dropGenTimer);
     this._runTimer = undefined;
     this._dropGenTimer = undefined;
+    this._stage = 'wakeup';
+    this._intro.step = 0;
+    this._intro.interval = 0;
     this._showFps = false;
     this._showDps = false;
-    this._buffer = new Array(BUF_SIZE).fill(MONO_SPACE);
+    this._clearBuffer();
     this._drops.clear();
     this._dpsStringLength = 0;
-    this._log = '';
     this.reRenderGlasses();
+    this.renderApp();
   };
 
   /** minimal html for app web view */
@@ -140,15 +189,15 @@ export default class MatrixRain {
       </div>
 
       <div class="description">
-        <h4>Most useless app on EvenHub, but it would be wrong not to make it for this display.</h4>
+        <h4>Most useless app on Even Hub, but it would be wrong not to make it for this display.</h4>
         <p>It's generating <span class="highlight">${this._dropsPerSec}</span> drops per second. Swipe UP/DOWN to 
         change drop rate.</p>
       </div>
 
-      <div class="code">${this._log}</div>
+      <div class="code"></div>
 
       <div class="row">
-        <button class="button" id="playButton">${this._runTimer ? 'STOP' : 'START'}</button>
+        <button class="button" id="playButton">${this._isRunning ? 'STOP' : 'START'}</button>
       </div>
     </div>
   `;
@@ -157,12 +206,11 @@ export default class MatrixRain {
       document.querySelector<HTMLButtonElement>('#playButton')!;
 
     playButton?.addEventListener('click', () => {
-      if (!this._runTimer) {
+      if (!this._isRunning) {
         this.start();
       } else {
         this.stop();
       }
-      this.renderApp();
     });
   };
 
@@ -178,7 +226,7 @@ export default class MatrixRain {
     }
 
     if (this._showDps) {
-      const dpsString = `dps:${this._dropsPerSec}`;
+      const dpsString = `dps:${this._dropsPerSec} `;
       this._dpsStringLength = dpsString.length;
       toMonospace(dpsString)
         .split('')
@@ -190,22 +238,120 @@ export default class MatrixRain {
     this._textUpdate.content = this._buffer.join('');
     await this._bridge?.textContainerUpgrade(this._textUpdate);
 
-    if (this._runTimer) await this.reRenderGlasses();
+    if (this._isRunning) await this.reRenderGlasses();
   };
 
   /** for dev use */
-  log = (msg: any) => {
+  log = (...values: any[]) => {
     if (!this._logEnabled) return;
 
-    if (typeof msg !== 'string') {
-      msg = JSON.stringify(msg, null, 2);
+    values.forEach((value: any) => {
+      if (typeof value !== 'string') {
+        value = JSON.stringify(value, null, 2);
+      }
+      this._log += `${value} `;
+    });
+    this._log += '\n';
+
+    if (this._log.length > 5000) {
+      this._log = this._log.slice(4000);
     }
-    this._log = msg;
-    // enable during dev
-    this.renderApp();
+
+    const code = document.querySelector<HTMLDivElement>('.code')!;
+    const wasAtBottom =
+      code.scrollTop + code.clientHeight >= code.scrollHeight - 10;
+
+    code.innerHTML = this._log;
+
+    if (wasAtBottom) {
+      code.scrollTop = code.scrollHeight;
+    }
   };
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ private methods ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  /** updates stage and restarts timers with needed interval*/
+  private _setStage = (stage: Stage) => {
+    this._stage = stage;
+    clearInterval(this._runTimer);
+    this._runTimer = setInterval(
+      this._process[this._stage],
+      this._interval[this._stage],
+    );
+    if (this._stage === 'rain') {
+      clearInterval(this._dropGenTimer);
+      this._dropGenTimer = setInterval(
+        this._generateDrop,
+        1000 / this._dropsPerSec,
+      );
+    }
+  };
+
+  /** processing intro stages */
+  private _processIntro = () => {
+    const { wakeup, step, wakeupOffset, hasYou, hasOffset } = this._intro;
+
+    if (this._stage === 'wakeup') {
+      if (step < wakeup.length) {
+        this._buffer[step + wakeupOffset] = wakeup[step];
+        this._intro.step++;
+      } else {
+        // adding delay before next stage to give it a second to stay on screen
+        setTimeout(() => {
+          this._intro.interval = 0;
+          this._intro.step = 0;
+          this._clearBuffer();
+          this._setStage('hasYou');
+        }, 1000);
+      }
+    } else {
+      if (step < hasYou.length) {
+        this._buffer[step + hasOffset] = hasYou[step];
+        this._intro.step++;
+      } else {
+        this._intro.interval = 0;
+        this._intro.step = 0;
+        // adding delay before next stage to give it a second to stay on screen
+        // not clearing, because it looks cool when it rains over the text
+        setTimeout(() => this._setStage('rain'), 1000);
+      }
+    }
+  };
+
+  /* Processing drop objects to add characters to buffer */
+  private _processDrops = () => {
+    for (const drop of this._drops) {
+      if (drop.head < BUF_SIZE) {
+        // we only add characters to buffer if head is within bounds
+        this._buffer[drop.head] = getRandomMatrixChar();
+      }
+      if (drop.tail < BUF_SIZE) {
+        // erasing space behind drop end
+        this._buffer[drop.tail] = MONO_SPACE;
+      } else {
+        // drop is fully out of view, removing it
+        this._drops.delete(drop);
+      }
+
+      // interval is randomly generated, it adds extra variety to drops
+      // motion, making some of them slower while continuing circuling
+      // throught random characters, like in real matrix rain
+      if (drop.interval < 2 || drop.step++ % drop.interval === 0) {
+        // adding full width essentially moves it down in Y position
+        drop.head += MATRIX.width;
+        drop.tail += MATRIX.width;
+      }
+    }
+  };
+
+  private _generateDrop = () => {
+    if (this._stage !== 'rain') return;
+    const head = Math.floor(Math.random() * MATRIX.width);
+    const len = Math.ceil(Math.random() * MATRIX.height) + 3;
+    const tail = head - len * MATRIX.width;
+    const interval = Math.floor(Math.random() * 3);
+    this._drops.add({ head, tail, interval, step: 0 });
+  };
 
   private _toggleFps = () => {
     this._showFps = !this._showFps;
@@ -232,40 +378,14 @@ export default class MatrixRain {
       this._generateDrop,
       1000 / this._dropsPerSec,
     );
-    this.renderApp();
+    const highlight = document.querySelector<HTMLDivElement>('.highlight');
+    if (highlight) highlight.innerHTML = `${this._dropsPerSec}`;
   };
 
-  private _generateDrop = () => {
-    const head = Math.floor(Math.random() * MATRIX.width);
-    const len = Math.ceil(Math.random() * MATRIX.height) + 3;
-    const tail = head - len * MATRIX.width;
-    const interval = Math.floor(Math.random() * 3);
-    this._drops.add({ head, tail, interval, step: 0 });
-  };
-
-  /* Processing drop objects to add characters to buffer */
-  private _processDrops = () => {
-    for (const drop of this._drops) {
-      if (drop.head < BUF_SIZE) {
-        // we only add characters to buffer if head is within bounds
-        this._buffer[drop.head] = getRandomMatrixChar();
-      }
-      if (drop.tail < BUF_SIZE) {
-        // erasing space behind drop end
-        this._buffer[drop.tail] = MONO_SPACE;
-      } else {
-        // drop is fully out of view, removing it
-        this._drops.delete(drop);
-      }
-
-      // interval is randomly generated, it adds extra variety to drops
-      // motion, making some of them slower while continuing circuling
-      // throught random characters, like in real matrix rain
-      if (drop.interval < 2 || drop.step++ % drop.interval === 0) {
-        // adding full width essentially moves it down in Y position
-        drop.head += MATRIX.width;
-        drop.tail += MATRIX.width;
-      }
+  /** fills entire buffer with mono spaces */
+  private _clearBuffer = () => {
+    for (let i = 0; i < BUF_SIZE; i++) {
+      this._buffer[i] = MONO_SPACE;
     }
   };
 

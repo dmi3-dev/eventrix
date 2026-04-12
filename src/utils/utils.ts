@@ -25,7 +25,7 @@ import { MONO_MATRIX_CHARS, MONO_SPACE } from './consts.ts';
 /** converts string of regular ascii characters to monospace unicode characters */
 export const toMonospace = (text: string): string => {
   return text.replace(/[ -~]/g, ch => {
-    if (ch === ' ') return MONO_SPACE;
+    if (ch === ' ' || ch === '\t' || ch === MONO_SPACE) return MONO_SPACE;
     const code = ch.charCodeAt(0);
     return String.fromCharCode(code + 0xfee0);
   });

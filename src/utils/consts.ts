@@ -37,7 +37,7 @@ export const MATRIX = {
 export const BUF_SIZE = MATRIX.width * MATRIX.height - 2;
 
 export const MATRIX_TEXT_ID = 1234;
-export const DEFAULT_DPS = 5;
+export const DEFAULT_DPS = 8;
 export const MIN_DPS = 1;
 export const MAX_DPS = 42;
 

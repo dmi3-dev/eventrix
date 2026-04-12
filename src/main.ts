@@ -24,8 +24,8 @@ import './style.css';
 import MatrixRain from './app/controller.ts';
 
 const main = async () => {
-  await MatrixRain.inst.start();
   MatrixRain.inst.renderApp();
+  await MatrixRain.inst.start();
   await MatrixRain.inst.reRenderGlasses();
 };
 

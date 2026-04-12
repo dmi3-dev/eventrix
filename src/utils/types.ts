@@ -20,6 +20,17 @@
  * SOFTWARE.
  */
 
+export type Stage = 'wakeup' | 'hasYou' | 'rain';
+
+export type Intro = {
+  wakeup: string;
+  hasYou: string;
+  step: number;
+  interval: number;
+  wakeupOffset: number;
+  hasOffset: number;
+};
+
 export type Drop = {
   head: number;
   tail: number;

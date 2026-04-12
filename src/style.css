@@ -48,8 +48,26 @@ body {
   flex: 1;
   text-align: left;
   white-space: pre-wrap;
-  overflow: scroll;
+  overflow: auto;
   word-break: break-word;
+}
+
+.code::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.code::-webkit-scrollbar-track {
+  background: #222;
+}
+
+.code::-webkit-scrollbar-thumb {
+  background: #666;
+  border-radius: 999px;
+}
+
+.code::-webkit-scrollbar-corner {
+  background: #222;
 }
 
 .row {
