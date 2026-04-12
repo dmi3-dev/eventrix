@@ -2,10 +2,10 @@
   <rect width="32" height="32" fill="transparent"/>
   <text
       x="16"
-      y="17"
+      y="19"
       fill="#00ff66"
       font-family="monospace"
-      font-size="24"
+      font-size="32"
       text-anchor="middle"
       dominant-baseline="middle">カ</text>
 </svg>

@@ -1,7 +1,7 @@
 {
   "name": "eventrix",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.9.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "sim": "evenhub-simulator http://localhost:5173",
-    "qr": "evenhub qr --url http://192.168.1.131:5173"
+    "qr": "evenhub qr --url http://192.168.1.131:5173",
+    "pack": "evenhub pack app.json dist -o eventrix.ehpk"
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.9",
