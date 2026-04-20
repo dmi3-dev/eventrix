@@ -20,35 +20,37 @@
  * SOFTWARE.
  */
 
+import Controller from './controller.ts';
 import {
-  ImageContainerProperty,
   ListContainerProperty,
-  TextContainerProperty,
+  ListItemContainerProperty,
 } from '@evenrealities/even_hub_sdk';
+import { VIEW } from '../utils/consts.ts';
 
-export type Stage = 'wakeup' | 'hasYou' | 'rain';
+export default class Options extends Controller {
+  private static _inst: Options;
+  public static get inst(): Options {
+    if (!Options._inst) Options._inst = new Options();
+    return Options._inst;
+  }
+  private constructor() {
+    super();
+  }
 
-export type Intro = {
-  wakeup: string;
-  hasYou: string;
-  step: number;
-  substep: number;
-  wakeupOffset: number;
-  hasOffset: number;
-};
-
-export type Drop = {
-  head: number;
-  tail: number;
-  substep: number;
-  step: number;
-  delay: number;
-  interval: number;
-};
-
-export type Containers = {
-  containerTotalNum: number;
-  listObject: ListContainerProperty[];
-  textObject: TextContainerProperty[];
-  imageObject: ImageContainerProperty[];
-};
+  show = async () => {
+    await this.rebuildPage({
+      listObject: [
+        // main fullscreen text renderer
+        new ListContainerProperty({
+          xPosition: 0,
+          yPosition: 0,
+          width: VIEW.width,
+          height: VIEW.height,
+          containerID: 1,
+          isEventCapture: 0,
+          itemContainer: new ListItemContainerProperty(), // todo resume here
+        }),
+      ],
+    });
+  };
+}

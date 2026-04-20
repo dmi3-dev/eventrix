@@ -26,49 +26,59 @@ import {
   CreateStartUpPageContainer,
   type EvenHubEvent,
   OsEventTypeList,
+  RebuildPageContainer,
   TextContainerProperty,
   waitForEvenAppBridge,
 } from '@evenrealities/even_hub_sdk';
 import { CONTROLLER_TEXT_ID } from '../utils/consts.ts';
 import Model from './model.ts';
+import type { Containers } from '../utils/types.ts';
 
 export default abstract class Controller {
   get bridge() {
     return Model.state.bridge!;
   }
 
-  /** this must be executed before any other logic can use bridge */
+  /** this is used once at the start and must be executed before any other
+   * logic that uses bridge */
   async initPage(
-    containders: TextContainerProperty[],
-    onBack?: () => void,
+    containders: Partial<Containers>,
     useInvisibleController = true,
   ) {
     if (!Model.state.bridge) {
       Model.state.bridge = await waitForEvenAppBridge();
     }
 
-    if (onBack) {
-      this.onBack = onBack;
-    }
-
-    const textObject = [...containders];
-    if (useInvisibleController) {
-      textObject.push(
-        // controller container to avoid shifts of main text on swipes
-        new TextContainerProperty({
-          containerID: CONTROLLER_TEXT_ID,
-          isEventCapture: 1,
-        }),
-      );
-    }
-
     const pageContainer = new CreateStartUpPageContainer({
-      containerTotalNum: textObject.length,
-      textObject,
+      ...this._getUpdatedContainers(containders, useInvisibleController),
     });
 
     await Model.state.bridge.createStartUpPageContainer(pageContainer);
     this._initEvents();
+  }
+
+  /** best used to switch between pages */
+  async rebuildPage(
+    containders: Partial<Containers>,
+    onBack?: () => void,
+    useInvisibleController = true,
+  ) {
+    // fallback to init if this was called before the init
+    if (!Model.state.bridge) {
+      // evaluate: maybe should trhow error instead
+      await this.initPage(containders, useInvisibleController);
+      return;
+    }
+
+    if (onBack) {
+      this.onBack = onBack;
+    }
+
+    await this.bridge.rebuildPageContainer(
+      new RebuildPageContainer({
+        ...this._getUpdatedContainers(containders, useInvisibleController),
+      }),
+    );
   }
 
   onClick?: (event: EvenHubEvent) => void;
@@ -152,5 +162,33 @@ export default abstract class Controller {
           break;
       }
     });
+  }
+
+  private _getUpdatedContainers(
+    containers: Partial<Containers>,
+    useInvisibleController: boolean,
+  ) {
+    const { listObject, imageObject } = containers;
+    let { textObject } = containers;
+    if (useInvisibleController) {
+      textObject = [
+        ...(textObject ?? []),
+        new TextContainerProperty({
+          containerID: CONTROLLER_TEXT_ID,
+          isEventCapture: 1,
+        }),
+      ];
+    }
+
+    const containerTotalNum =
+      (textObject?.length ?? 0) +
+      (listObject?.length ?? 0) +
+      (imageObject?.length ?? 0);
+
+    return {
+      ...containers,
+      textObject,
+      containerTotalNum,
+    };
   }
 }

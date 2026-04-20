@@ -92,18 +92,20 @@ export default class MatrixRain extends Controller {
 
   /** initializes the bridge and creates startup page */
   initialize = async () => {
-    await this.initPage([
-      // main fullscreen text renderer
-      new TextContainerProperty({
-        xPosition: 0,
-        yPosition: 0,
-        width: VIEW.width,
-        height: VIEW.height,
-        content: '',
-        containerID: MATRIX_TEXT_ID,
-        isEventCapture: 0,
-      }),
-    ]);
+    await this.initPage({
+      textObject: [
+        // main fullscreen text renderer
+        new TextContainerProperty({
+          xPosition: 0,
+          yPosition: 0,
+          width: VIEW.width,
+          height: VIEW.height,
+          content: '',
+          containerID: MATRIX_TEXT_ID,
+          isEventCapture: 0,
+        }),
+      ],
+    });
 
     // updating wakeup message with actual username
     const userInfo = await this.bridge.getUserInfo();
