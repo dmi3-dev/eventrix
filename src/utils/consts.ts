@@ -36,10 +36,13 @@ export const MATRIX = {
 // using this hack until I find that combo and remove it
 export const BUF_SIZE = MATRIX.width * MATRIX.height - 2;
 
+export const REFRESH_DENOM = 15;
+export const CONTROLLER_TEXT_ID = 1000;
 export const MATRIX_TEXT_ID = 1234;
-export const DEFAULT_DPS = 8;
-export const MIN_DPS = 1;
+export const MIN_DPS = 0.1;
 export const MAX_DPS = 42;
+export const MIN_RAIN_LENGH = 2;
+export const MAX_RAIN_LENGH = 20;
 
 export const MONO_SPACE = '\u3000';
 export const MONO_MATRIX_CHARS =

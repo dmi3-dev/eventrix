@@ -33,3 +33,13 @@ export const toMonospace = (text: string): string => {
 
 export const getRandomMatrixChar = () =>
   MONO_MATRIX_CHARS[Math.floor(Math.random() * MONO_MATRIX_CHARS.length)];
+
+export const sleep = async (ms: number) => {
+  return new Promise(resolve => setTimeout(resolve, ms));
+};
+
+export const round = (value: number, n: number = 3): number => {
+  if (n < 1) return Math.round(value);
+  const rounder = Math.pow(10, n);
+  return Math.round(value * rounder) / rounder;
+};

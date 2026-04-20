@@ -21,12 +21,16 @@
  */
 
 import './style.css';
-import MatrixRain from './app/controller.ts';
+import MatrixRain from './app/matrix-rain.ts';
 
 const main = async () => {
   MatrixRain.inst.renderApp();
-  await MatrixRain.inst.start();
-  await MatrixRain.inst.reRenderGlasses();
+
+  // adding delay before start, because Even App tend to lag on startup
+  setTimeout(async () => {
+    await MatrixRain.inst.start();
+    await MatrixRain.inst.reRenderGlasses();
+  }, 1000);
 };
 
 main();

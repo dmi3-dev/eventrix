@@ -6,6 +6,21 @@ Most useless app on EvenHub, but it would be wrong not to make it for this displ
 ### fun and discoveries
 Figured out how to draw monospace ascii and other unicode characters, check [utils.ts](./src/utils/utils.ts) for function and [consts.ts](./src/utils/consts.ts) for set of characters
 
+
+### controls
+
+- tap: open menu
+  - resume
+  - restart
+  - options
+- double tap: exit modal
+
+### options
+- drops per second
+- drop max length
+- drop fall speed
+- skip intro
+
 ### dev
 
 add simulator to bin to be able to run `sim`

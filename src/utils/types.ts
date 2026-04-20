@@ -26,7 +26,7 @@ export type Intro = {
   wakeup: string;
   hasYou: string;
   step: number;
-  interval: number;
+  substep: number;
   wakeupOffset: number;
   hasOffset: number;
 };
@@ -34,6 +34,8 @@ export type Intro = {
 export type Drop = {
   head: number;
   tail: number;
+  substep: number;
   step: number;
+  delay: number;
   interval: number;
 };
