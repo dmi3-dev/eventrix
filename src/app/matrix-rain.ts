@@ -34,7 +34,7 @@ import {
   REFRESH_DENOM,
   VIEW,
 } from '../utils/consts.ts';
-import type { Drop, Intro, Stage } from '../utils/types.ts';
+import type { Container, Drop, Intro, Stage } from '../utils/types.ts';
 import {
   getRandomMatrixChar,
   round,
@@ -42,10 +42,11 @@ import {
   toMonospace,
 } from '../utils/utils.ts';
 import FpsConuter from './fps-conuter.ts';
-import Controller from './controller.ts';
+import PageController from './pageController.ts';
 import Model from './model.ts';
+import Options from './options.ts';
 
-export default class MatrixRain extends Controller {
+export default class MatrixRain extends PageController {
   private static _inst: MatrixRain;
   public static get inst(): MatrixRain {
     if (!MatrixRain._inst) MatrixRain._inst = new MatrixRain();
@@ -54,6 +55,22 @@ export default class MatrixRain extends Controller {
   private constructor() {
     super();
   }
+
+  _cachedPage: Partial<Container> = {
+    createHiddenController: true,
+    textObject: [
+      // main fullscreen text renderer
+      new TextContainerProperty({
+        xPosition: 0,
+        yPosition: 0,
+        width: VIEW.width,
+        height: VIEW.height,
+        content: '',
+        containerID: MATRIX_TEXT_ID,
+        isEventCapture: 0,
+      }),
+    ],
+  };
 
   // even objects
   private _textUpdate = new TextContainerUpgrade({
@@ -91,22 +108,7 @@ export default class MatrixRain extends Controller {
   };
 
   /** initializes the bridge and creates startup page */
-  initialize = async () => {
-    await this.initPage({
-      textObject: [
-        // main fullscreen text renderer
-        new TextContainerProperty({
-          xPosition: 0,
-          yPosition: 0,
-          width: VIEW.width,
-          height: VIEW.height,
-          content: '',
-          containerID: MATRIX_TEXT_ID,
-          isEventCapture: 0,
-        }),
-      ],
-    });
-
+  async initPage() {
     // updating wakeup message with actual username
     const userInfo = await this.bridge.getUserInfo();
     const fifthRow = MATRIX.width * 4;
@@ -131,20 +133,22 @@ export default class MatrixRain extends Controller {
 
     // also calculating offset for next message
     this._intro.hasOffset = Math.floor(center - this._intro.hasYou.length / 2);
-  };
+    return super.initPage();
+  }
 
   /** starts interwals to generate and process drops */
   start = async () => {
     this.stop();
-    Model.state.logData = '';
-    await this.initialize();
+    // Model.state.logData = '';
 
     this._setStage('rain');
     this._isRunning = true;
-    this.renderApp();
+    this.renderWebApp();
+    this.log('started');
   };
 
   stop = () => {
+    if (!this._isRunning) return;
     this._isRunning = false;
     clearInterval(this._runTimer);
     clearInterval(this._dropGenTimer);
@@ -155,11 +159,14 @@ export default class MatrixRain extends Controller {
     this._clearBuffer();
     this._drops.clear();
     this.reRenderGlasses();
-    this.renderApp();
+    this.renderWebApp();
+    this.log('stopped');
   };
 
   onClick = () => {
-    this._toggleFps();
+    // this.log('clicked');
+    this.stop();
+    Options.inst.showPausePage();
   };
 
   onScrollUp = () => {
@@ -179,7 +186,7 @@ export default class MatrixRain extends Controller {
   };
 
   /** minimal html for app web view */
-  renderApp = () => {
+  renderWebApp = () => {
     const app = document.querySelector<HTMLDivElement>('#app')!;
     app.innerHTML = `
     <div class="app">
@@ -193,7 +200,7 @@ export default class MatrixRain extends Controller {
         change drop rate.</p>
       </div>
 
-      <div class="code"></div>
+      <div class="code" id="logs">${Model.state.logData}</div>
 
       <div class="row" id="buttonContainer">
         <button class="button" id="playButton">${this._isRunning ? 'STOP' : 'START'}</button>
@@ -206,9 +213,11 @@ export default class MatrixRain extends Controller {
 
     playButton?.addEventListener('click', async () => {
       if (!this._isRunning) {
+        this.log('START');
         await this.start();
         await this.reRenderGlasses();
       } else {
+        this.log('STOP');
         this.stop();
       }
     });

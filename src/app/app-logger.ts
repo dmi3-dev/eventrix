@@ -20,36 +20,34 @@
  * SOFTWARE.
  */
 
-import {
-  ImageContainerProperty,
-  ListContainerProperty,
-  TextContainerProperty,
-} from '@evenrealities/even_hub_sdk';
+import Model from './model.ts';
 
-export type Stage = 'wakeup' | 'hasYou' | 'rain';
+/** for dev use. Since there's no way to get console logs from even app, this will
+ * render logs on web app */
+export default class AppLogger {
+  static log = (...values: any[]) => {
+    if (!Model.state.isLogEnabled) return;
 
-export type Intro = {
-  wakeup: string;
-  hasYou: string;
-  step: number;
-  substep: number;
-  wakeupOffset: number;
-  hasOffset: number;
-};
+    values.forEach((value: any) => {
+      if (typeof value !== 'string') {
+        value = JSON.stringify(value, null, 2);
+      }
+      Model.state.logData += `${value} `;
+    });
+    Model.state.logData += '\n';
 
-export type Drop = {
-  head: number;
-  tail: number;
-  substep: number;
-  step: number;
-  delay: number;
-  interval: number;
-};
+    if (Model.state.logData.length > 5000) {
+      Model.state.logData = Model.state.logData.slice(4000);
+    }
 
-export type Container = {
-  createHiddenController: boolean;
-  containerTotalNum: number;
-  listObject: ListContainerProperty[];
-  textObject: TextContainerProperty[];
-  imageObject: ImageContainerProperty[];
-};
+    const logs = document.querySelector<HTMLDivElement>('#logs');
+    if (logs) {
+      logs.innerHTML = Model.state.logData;
+
+      // scroll down if was at the bottom
+      if (logs.scrollTop + logs.clientHeight >= logs.scrollHeight - 30) {
+        logs.scrollTop = logs.scrollHeight;
+      }
+    }
+  };
+}

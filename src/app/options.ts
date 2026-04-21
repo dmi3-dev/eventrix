@@ -20,14 +20,35 @@
  * SOFTWARE.
  */
 
-import Controller from './controller.ts';
+import PageController from './pageController.ts';
 import {
+  type EvenHubEvent,
   ListContainerProperty,
   ListItemContainerProperty,
 } from '@evenrealities/even_hub_sdk';
 import { VIEW } from '../utils/consts.ts';
+import Core from './core.ts';
+import MatrixRain from './matrix-rain.ts';
 
-export default class Options extends Controller {
+export default class Options extends PageController {
+  _cachedPage = {
+    listObject: [
+      // main fullscreen text renderer
+      new ListContainerProperty({
+        xPosition: 0,
+        yPosition: 0,
+        width: VIEW.width,
+        height: VIEW.height,
+        containerID: 1,
+        isEventCapture: 1,
+        itemContainer: new ListItemContainerProperty({
+          itemCount: 3,
+          itemName: ['back', 'restart', 'options'],
+        }),
+      }),
+    ],
+  };
+
   private static _inst: Options;
   public static get inst(): Options {
     if (!Options._inst) Options._inst = new Options();
@@ -37,20 +58,18 @@ export default class Options extends Controller {
     super();
   }
 
-  show = async () => {
-    await this.rebuildPage({
-      listObject: [
-        // main fullscreen text renderer
-        new ListContainerProperty({
-          xPosition: 0,
-          yPosition: 0,
-          width: VIEW.width,
-          height: VIEW.height,
-          containerID: 1,
-          isEventCapture: 0,
-          itemContainer: new ListItemContainerProperty(), // todo resume here
-        }),
-      ],
-    });
+  onBack = () => {
+    MatrixRain.inst.rebuildPage();
+    MatrixRain.inst.start();
+    MatrixRain.inst.reRenderGlasses();
+  };
+
+  showPausePage = () => {
+    this.rebuildPage();
+  };
+
+  onClick = (event: EvenHubEvent) => {
+    this.log('clicked', event);
+    this.onBack();
   };
 }

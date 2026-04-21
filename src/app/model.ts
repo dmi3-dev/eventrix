@@ -22,6 +22,7 @@
 
 import isEqual from 'lodash.isequal';
 import { EvenAppBridge } from '@evenrealities/even_hub_sdk';
+import AppLogger from './app-logger.ts';
 
 export type State = {
   isLogEnabled: boolean;
@@ -35,6 +36,8 @@ export type State = {
   logData: string;
   bridge: EvenAppBridge | null;
 };
+
+const UNSAVEABLE_KEYS: (keyof State)[] = ['bridge', 'logData', 'isMenuOpen'];
 
 const getInitState = (): State => ({
   isLogEnabled: true,
@@ -75,4 +78,45 @@ export default class Model {
   static reset() {
     Model.state = getInitState();
   }
+
+  /** if custom state is provided it will save just that, otherwise will save all state */
+  static saveState = async (state?: Partial<State>) => {
+    if (!Model.state.bridge) {
+      AppLogger.log('bridge is not initialized');
+      return;
+    }
+    await Promise.all(
+      Object.entries(state || Model.state)
+        .filter(([key]) => !UNSAVEABLE_KEYS.includes(key as keyof State))
+        .map(([key, value]) => {
+          return Model.state.bridge!.setLocalStorage(
+            key,
+            JSON.stringify(value),
+          );
+        }),
+    );
+  };
+
+  static loadState = async (state?: Partial<State>) => {
+    if (!Model.state.bridge) {
+      AppLogger.log('bridge is not initialized');
+      return;
+    }
+    const entries = await Promise.all(
+      Object.keys(state || Model.state)
+        .filter(key => !UNSAVEABLE_KEYS.includes(key as keyof State))
+        .map(async key => {
+          const value = await Model.state.bridge!.getLocalStorage(key);
+          return [key, value] as const;
+        }),
+    );
+
+    const loadedState = Object.fromEntries(
+      entries
+        .filter(([, raw]) => raw !== null && raw !== undefined)
+        .map(([key, raw]) => [key, JSON.parse(raw as string)]),
+    ) as Partial<State>;
+
+    Model.setState(loadedState);
+  };
 }
