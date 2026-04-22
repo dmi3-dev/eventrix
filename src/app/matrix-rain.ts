@@ -146,37 +146,38 @@ export default class MatrixRain extends PageController {
     this._isRunning = true;
     this._setStage(this._stage);
     this.renderWebApp();
-    this.reRender();
+    await this.reRender();
     this.log('started');
   };
 
-  stop = () => {
+  stop = async () => {
     this._isRunning = false;
     clearInterval(this._runTimer);
     clearInterval(this._dropGenTimer);
     this._runTimer = undefined;
     this._dropGenTimer = undefined;
+    await sleep(200);
     this.log('stopped');
   };
 
-  restart = () => {
-    this.reset();
-    this.start();
+  restart = async () => {
+    await this.reset();
+    await this.start();
   };
 
-  reset = () => {
-    this.stop();
+  reset = async () => {
+    await this.stop();
     this._stage = 'wakeup';
     this._resetIntroSteps();
     this._clearBuffer();
     this._drops.clear();
-    this.reRender();
+    await this.reRender();
     this.renderWebApp();
     this.log('reset');
   };
 
-  onClick = () => {
-    this.stop();
+  onClick = async () => {
+    await this.stop();
     Core.inst.goToPage('menu');
   };
 
@@ -229,7 +230,7 @@ export default class MatrixRain extends PageController {
         await this.start();
       } else {
         this.log('STOP');
-        this.stop();
+        await this.reset();
       }
     });
   };
