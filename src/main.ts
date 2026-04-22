@@ -26,13 +26,10 @@ import Core from './app/core.ts';
 
 const main = async () => {
   MatrixRain.inst.renderWebApp();
-  await Core.initialize(MatrixRain.inst);
+  await Core.inst.initialize();
 
-  // adding delay before start, because Even App tend to lag on startup
-  // setTimeout(async () => {
-  // }, 1000);
+  await MatrixRain.inst.initPage();
   await MatrixRain.inst.start();
-  await MatrixRain.inst.reRenderGlasses();
 };
 
 main();

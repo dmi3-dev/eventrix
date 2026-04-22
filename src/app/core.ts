@@ -20,15 +20,17 @@
  * SOFTWARE.
  */
 
-import type PageController from './pageController.ts';
-import Model from './model.ts';
 import {
+  CreateStartUpPageContainer,
   OsEventTypeList,
   waitForEvenAppBridge,
 } from '@evenrealities/even_hub_sdk';
+import type { Page } from '../utils/types.ts';
+import Model from './model.ts';
 import AppLogger from './app-logger.ts';
 import MatrixRain from './matrix-rain.ts';
-import Options from './options.ts';
+import Settings from './settings.ts';
+import Menu from './menu.ts';
 
 export default class Core {
   private static _inst: Core;
@@ -38,38 +40,72 @@ export default class Core {
   }
   private constructor() {}
 
-  private _activeControoler: PageController | null = null;
-
-  // todo: maybe use that to switch between pages instead of active
-  pages = {
-    main: MatrixRain.inst,
-    options: Options.inst,
-  };
-
   log = AppLogger.log;
 
   get bridge() {
     return Model.state.bridge!;
   }
 
-  static initialize = async (mainController: PageController) => {
+  get state() {
+    return Model.state;
+  }
+
+  get activePage() {
+    if (!this.state.pages) {
+      this.log('Pages not initialized');
+      throw new Error('Pages not initialized');
+    }
+    const pageName = this.state.pageStack.at(-1);
+    // trusting that it was initialized
+    return this.state.pages![pageName ?? 'main'];
+  }
+
+  /** must be called at very start of the application */
+  initialize = async () => {
+    this.log('initializing core');
     if (!Model.state.bridge) {
       Model.state.bridge = await waitForEvenAppBridge();
     }
-    Core.inst.log('initializing');
-    await mainController.initPage();
-    Core.setActiveController(mainController);
-    Core.inst._initEvents();
+
+    this.state.pages = {
+      main: MatrixRain.inst,
+      menu: Menu.inst,
+      settings: Settings.inst,
+    };
+
+    // starup page is created once at the start,
+    // after that only page update and rebuild is called
+    await this.bridge.createStartUpPageContainer(
+      new CreateStartUpPageContainer({
+        ...this.state.pages.main.getUpdatedContainers(),
+      }),
+    );
+    this._initEvents();
   };
 
-  static setActiveController(controller: PageController) {
-    Core.inst._activeControoler = controller;
-  }
+  goToPage = (page: Page) => {
+    this.state.pageStack.push(page);
+    this.log('going to', page, this.state.pageStack);
+    this.activePage.rebuildPage();
+  };
+
+  goBack = () => {
+    if (this.state.pageStack.length > 1) {
+      this.state.pageStack.pop();
+      this.log('back to', this.activePage.name, this.state.pageStack);
+      this.activePage.rebuildPage();
+      this.activePage.rebuildPage();
+    } else {
+      this.log('exit modal ');
+      // exit application
+      this.bridge.shutDownPageContainer(1);
+    }
+  };
 
   private _initEvents() {
     this.log('initializing events');
     this.bridge.onEvenHubEvent(event => {
-      this.log(event);
+      // this.log(event);
       const { sysEvent, textEvent, listEvent } = event;
 
       if (!sysEvent && !textEvent && !listEvent) return;
@@ -82,16 +118,20 @@ export default class Core {
       switch (eventType) {
         case OsEventTypeList.CLICK_EVENT:
         case undefined: // SDK normalizes 0 to undefined in some cases
-          this._activeControoler?.onClick?.(event);
+          this.activePage.onClick?.(event);
           break;
         case OsEventTypeList.DOUBLE_CLICK_EVENT:
-          this._activeControoler?.onDobleClick(event);
+          if (this.activePage.onDobleClick) {
+            this.activePage.onDobleClick(event);
+          } else {
+            this.goBack();
+          }
           break;
         case OsEventTypeList.SCROLL_TOP_EVENT:
-          this._activeControoler?.onScrollUp?.(event);
+          this.activePage.onScrollUp?.(event);
           break;
         case OsEventTypeList.SCROLL_BOTTOM_EVENT:
-          this._activeControoler?.onScrollDown?.(event);
+          this.activePage.onScrollDown?.(event);
           break;
 
         // // for future reference

@@ -29,12 +29,13 @@ import {
   TextContainerProperty,
 } from '@evenrealities/even_hub_sdk';
 import { CONTROLLER_TEXT_ID } from '../utils/consts.ts';
+import type { Container, Page } from '../utils/types.ts';
 import Model from './model.ts';
-import type { Container } from '../utils/types.ts';
 import AppLogger from './app-logger.ts';
-import Core from './core.ts';
 
 export default abstract class PageController {
+  abstract readonly name: Page;
+
   // used to auto rebuild page from what was initiated or custom rebuilt
   protected abstract _cachedPage: Partial<Container>;
   log = AppLogger.log;
@@ -43,8 +44,9 @@ export default abstract class PageController {
     return Model.state.bridge!;
   }
 
-  /** todo */
-  async rebuildPage(onBack?: () => void, containders?: Partial<Container>) {
+  /** Called to rebuild current page into this, with option to override the
+   * cached page. */
+  async rebuildPage(containders?: Partial<Container>) {
     if (!this.bridge) {
       this.log('rebuildPage called before Core initialized');
       return;
@@ -52,66 +54,38 @@ export default abstract class PageController {
 
     // if containers provided, override the cached one
     if (containders) {
-      this._cachedPage = this._getUpdatedContainers(containders);
+      this._cachedPage = this.getUpdatedContainers(containders);
     } else {
       if (
         this._cachedPage.createHiddenController ||
         !this._cachedPage.containerTotalNum
       ) {
         // processing initial cached page
-        this._cachedPage = this._getUpdatedContainers(this._cachedPage);
+        this._cachedPage = this.getUpdatedContainers(this._cachedPage);
       }
-    }
-
-    if (onBack) {
-      this.onBack = onBack;
     }
 
     await this.bridge.rebuildPageContainer(
       new RebuildPageContainer({ ...this._cachedPage }),
     );
-    Core.setActiveController(this);
-  }
-
-  /** this is used once at the start and must be executed before any other
-   * logic that uses bridge. It only needed to be called by a single controller,
-   * then other controllers can call rebuildPage */
-  async initPage() {
-    if (!this.bridge) {
-      this.log('Bridge not initialized.');
-      return;
-    }
-
-    // updating cached page, at this time it most likely doesn't have count
-    // and has invisible controller not yet created
-    this._cachedPage = this._getUpdatedContainers(this._cachedPage);
-    await this.bridge.createStartUpPageContainer(
-      new CreateStartUpPageContainer({
-        ...this._cachedPage,
-      }),
-    );
+    this.start?.();
+    this.log('rebuild', this.name);
   }
 
   setCachedPage = (containders: Partial<Container>) => {
-    this._cachedPage = this._getUpdatedContainers(containders);
+    this._cachedPage = this.getUpdatedContainers(containders);
   };
 
+  start?: () => void;
+  stop?: () => void;
   onClick?: (event: EvenHubEvent) => void;
-  onDobleClick = (_: EvenHubEvent) => {
-    // All ER apps use double click to go back and exit, should be overwritten
-    // only in very special cases
-    this.onBack();
-  };
+  onDobleClick?: (event: EvenHubEvent) => void;
   onScrollUp?: (event: EvenHubEvent) => void;
   onScrollDown?: (event: EvenHubEvent) => void;
   onLongPress?: (event: EvenHubEvent) => void;
 
-  onBack = () => {
-    // exit by default, can be overwritten in initPage
-    this.bridge.shutDownPageContainer(1);
-  };
-
-  private _getUpdatedContainers(containers: Partial<Container>) {
+  getUpdatedContainers(containers?: Partial<Container>) {
+    containers ??= this._cachedPage;
     const { listObject, imageObject, createHiddenController } = containers;
     let { textObject } = containers;
     if (createHiddenController) {

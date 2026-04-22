@@ -21,36 +21,8 @@
  */
 
 import isEqual from 'lodash.isequal';
-import { EvenAppBridge } from '@evenrealities/even_hub_sdk';
 import AppLogger from './app-logger.ts';
-
-export type State = {
-  isLogEnabled: boolean;
-  isSkipIntro: boolean;
-  isMenuOpen: boolean;
-  isShowFps: boolean;
-  dps: number;
-  maxLength: number;
-  maxCycles: number;
-  speed: number;
-  logData: string;
-  bridge: EvenAppBridge | null;
-};
-
-const UNSAVEABLE_KEYS: (keyof State)[] = ['bridge', 'logData', 'isMenuOpen'];
-
-const getInitState = (): State => ({
-  isLogEnabled: true,
-  isSkipIntro: false,
-  isMenuOpen: false,
-  isShowFps: true,
-  dps: 5,
-  maxLength: 2,
-  maxCycles: 3,
-  speed: 5,
-  logData: '',
-  bridge: null,
-});
+import { getInitState, type State, UNSAVEABLE_KEYS } from './state.ts';
 
 export default class Model {
   static state: State = getInitState();

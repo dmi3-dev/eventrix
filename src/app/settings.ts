@@ -21,37 +21,49 @@
  */
 
 import {
-  ImageContainerProperty,
+  type EvenHubEvent,
   ListContainerProperty,
-  TextContainerProperty,
+  ListItemContainerProperty,
 } from '@evenrealities/even_hub_sdk';
+import { VIEW } from '../utils/consts.ts';
+import type { Page } from '../utils/types.ts';
+import PageController from './page-controller.ts';
 
-export type Stage = 'wakeup' | 'hasYou' | 'rain';
+export default class Settings extends PageController {
+  readonly name: Page = 'settings';
 
-export type Intro = {
-  wakeup: string;
-  hasYou: string;
-  step: number;
-  substep: number;
-  wakeupOffset: number;
-  hasOffset: number;
-};
+  _cachedPage = {
+    listObject: [
+      // main fullscreen text renderer
+      new ListContainerProperty({
+        xPosition: 0,
+        yPosition: 0,
+        width: VIEW.width,
+        height: VIEW.height,
+        containerID: 1,
+        isEventCapture: 1,
+        itemContainer: new ListItemContainerProperty({
+          itemCount: 3,
+          itemName: ['back', 'restart', 'options'],
+        }),
+      }),
+    ],
+  };
 
-export type Drop = {
-  head: number;
-  tail: number;
-  substep: number;
-  step: number;
-  delay: number;
-  interval: number;
-};
+  private static _inst: Settings;
+  public static get inst(): Settings {
+    if (!Settings._inst) Settings._inst = new Settings();
+    return Settings._inst;
+  }
+  private constructor() {
+    super();
+  }
 
-export type Container = {
-  createHiddenController: boolean;
-  containerTotalNum: number;
-  listObject: ListContainerProperty[];
-  textObject: TextContainerProperty[];
-  imageObject: ImageContainerProperty[];
-};
+  showPausePage = () => {
+    this.rebuildPage();
+  };
 
-export type Page = 'main' | 'menu' | 'settings';
+  onClick = (event: EvenHubEvent) => {
+    this.log('clicked', event);
+  };
+}

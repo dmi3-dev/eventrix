@@ -34,7 +34,7 @@ import {
   REFRESH_DENOM,
   VIEW,
 } from '../utils/consts.ts';
-import type { Container, Drop, Intro, Stage } from '../utils/types.ts';
+import type { Container, Drop, Intro, Page, Stage } from '../utils/types.ts';
 import {
   getRandomMatrixChar,
   round,
@@ -42,11 +42,14 @@ import {
   toMonospace,
 } from '../utils/utils.ts';
 import FpsConuter from './fps-conuter.ts';
-import PageController from './pageController.ts';
+import PageController from './page-controller.ts';
 import Model from './model.ts';
-import Options from './options.ts';
+import Settings from './settings.ts';
+import Core from './core.ts';
 
 export default class MatrixRain extends PageController {
+  readonly name: Page = 'main';
+
   private static _inst: MatrixRain;
   public static get inst(): MatrixRain {
     if (!MatrixRain._inst) MatrixRain._inst = new MatrixRain();
@@ -91,7 +94,7 @@ export default class MatrixRain extends PageController {
     hasYou: () => this._processIntro(),
     rain: () => this._processDrops(),
   };
-  private _stage: Stage = 'wakeup';
+  private _stage: Stage = 'rain';
   private _isRunning = false;
   private _intro: Intro = {
     wakeup: 'Wake up, Neo...',
@@ -133,40 +136,48 @@ export default class MatrixRain extends PageController {
 
     // also calculating offset for next message
     this._intro.hasOffset = Math.floor(center - this._intro.hasYou.length / 2);
-    return super.initPage();
   }
 
   /** starts interwals to generate and process drops */
   start = async () => {
-    this.stop();
+    // this.stop();
     // Model.state.logData = '';
 
-    this._setStage('rain');
     this._isRunning = true;
+    this._setStage(this._stage);
     this.renderWebApp();
+    this.reRender();
     this.log('started');
   };
 
   stop = () => {
-    if (!this._isRunning) return;
     this._isRunning = false;
     clearInterval(this._runTimer);
     clearInterval(this._dropGenTimer);
     this._runTimer = undefined;
     this._dropGenTimer = undefined;
+    this.log('stopped');
+  };
+
+  restart = () => {
+    this.reset();
+    this.start();
+  };
+
+  reset = () => {
+    this.stop();
     this._stage = 'wakeup';
     this._resetIntroSteps();
     this._clearBuffer();
     this._drops.clear();
-    this.reRenderGlasses();
+    this.reRender();
     this.renderWebApp();
-    this.log('stopped');
+    this.log('reset');
   };
 
   onClick = () => {
-    // this.log('clicked');
     this.stop();
-    Options.inst.showPausePage();
+    Core.inst.goToPage('menu');
   };
 
   onScrollUp = () => {
@@ -186,6 +197,7 @@ export default class MatrixRain extends PageController {
   };
 
   /** minimal html for app web view */
+  // todo: move out
   renderWebApp = () => {
     const app = document.querySelector<HTMLDivElement>('#app')!;
     app.innerHTML = `
@@ -215,7 +227,6 @@ export default class MatrixRain extends PageController {
       if (!this._isRunning) {
         this.log('START');
         await this.start();
-        await this.reRenderGlasses();
       } else {
         this.log('STOP');
         this.stop();
@@ -226,7 +237,7 @@ export default class MatrixRain extends PageController {
   /** the rate of rerender in glasses is very limited. We are getting 5 FPS
    * for full screen text. Making it handle the next re-render once previous
    * is done, leaving it outside of main run logic. */
-  reRenderGlasses = async () => {
+  reRender = async () => {
     if (Model.state.isShowFps) {
       FpsConuter.countFps();
       FpsConuter.fpsMonoString
@@ -243,7 +254,7 @@ export default class MatrixRain extends PageController {
     if (this._isRunning) {
       // adding delay for simulator
       if (Date.now() - t < 50) await sleep(150);
-      await this.reRenderGlasses();
+      await this.reRender();
     }
   };
 
@@ -320,7 +331,6 @@ export default class MatrixRain extends PageController {
         // erasing space behind drop end
         this._buffer[drop.tail] = MONO_SPACE;
       } else {
-        Model.state.dps -= 1;
         // drop is fully out of view, removing it
         this._drops.delete(drop);
       }

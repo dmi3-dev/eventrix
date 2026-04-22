@@ -20,17 +20,22 @@
  * SOFTWARE.
  */
 
-import PageController from './pageController.ts';
 import {
   type EvenHubEvent,
   ListContainerProperty,
   ListItemContainerProperty,
 } from '@evenrealities/even_hub_sdk';
 import { VIEW } from '../utils/consts.ts';
+import type { Page } from '../utils/types.ts';
+import PageController from './page-controller.ts';
 import Core from './core.ts';
 import MatrixRain from './matrix-rain.ts';
 
-export default class Options extends PageController {
+export default class Menu extends PageController {
+  readonly name: Page = 'menu';
+
+  readonly settings = ['back', 'restart', 'settings'];
+
   _cachedPage = {
     listObject: [
       // main fullscreen text renderer
@@ -40,36 +45,46 @@ export default class Options extends PageController {
         width: VIEW.width,
         height: VIEW.height,
         containerID: 1,
+        containerName: 'menu',
         isEventCapture: 1,
         itemContainer: new ListItemContainerProperty({
           itemCount: 3,
-          itemName: ['back', 'restart', 'options'],
+          itemName: this.settings,
         }),
       }),
     ],
   };
 
-  private static _inst: Options;
-  public static get inst(): Options {
-    if (!Options._inst) Options._inst = new Options();
-    return Options._inst;
+  private static _inst: Menu;
+  public static get inst(): Menu {
+    if (!Menu._inst) Menu._inst = new Menu();
+    return Menu._inst;
   }
   private constructor() {
     super();
   }
-
-  onBack = () => {
-    MatrixRain.inst.rebuildPage();
-    MatrixRain.inst.start();
-    MatrixRain.inst.reRenderGlasses();
-  };
 
   showPausePage = () => {
     this.rebuildPage();
   };
 
   onClick = (event: EvenHubEvent) => {
-    this.log('clicked', event);
-    this.onBack();
+    const selectedOption = event?.listEvent?.currentSelectItemIndex ?? 0;
+    this.log('clicked', this.settings[selectedOption]);
+    switch (this.settings[selectedOption]) {
+      case 'back':
+        Core.inst.goBack();
+        MatrixRain.inst.start();
+        break;
+      case 'restart':
+        Core.inst.goBack();
+        MatrixRain.inst.restart();
+        break;
+      case 'settings':
+        Core.inst.goToPage('settings');
+        break;
+      default:
+        break;
+    }
   };
 }

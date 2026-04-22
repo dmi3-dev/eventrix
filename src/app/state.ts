@@ -20,38 +20,44 @@
  * SOFTWARE.
  */
 
-import {
-  ImageContainerProperty,
-  ListContainerProperty,
-  TextContainerProperty,
-} from '@evenrealities/even_hub_sdk';
+import type { EvenAppBridge } from '@evenrealities/even_hub_sdk';
+import type { Page } from '../utils/types.ts';
+import type PageController from './page-controller.ts';
 
-export type Stage = 'wakeup' | 'hasYou' | 'rain';
-
-export type Intro = {
-  wakeup: string;
-  hasYou: string;
-  step: number;
-  substep: number;
-  wakeupOffset: number;
-  hasOffset: number;
+export type State = {
+  isLogEnabled: boolean;
+  isSkipIntro: boolean;
+  isMenuOpen: boolean;
+  isShowFps: boolean;
+  dps: number;
+  maxLength: number;
+  maxCycles: number;
+  speed: number;
+  logData: string;
+  bridge: EvenAppBridge | null;
+  pages: Record<Page, PageController> | null;
+  pageStack: Page[];
 };
 
-export type Drop = {
-  head: number;
-  tail: number;
-  substep: number;
-  step: number;
-  delay: number;
-  interval: number;
-};
+export const UNSAVEABLE_KEYS: (keyof State)[] = [
+  'bridge',
+  'logData',
+  'isMenuOpen',
+  'pages',
+  'pageStack',
+];
 
-export type Container = {
-  createHiddenController: boolean;
-  containerTotalNum: number;
-  listObject: ListContainerProperty[];
-  textObject: TextContainerProperty[];
-  imageObject: ImageContainerProperty[];
-};
-
-export type Page = 'main' | 'menu' | 'settings';
+export const getInitState = (): State => ({
+  isLogEnabled: true,
+  isSkipIntro: false,
+  isMenuOpen: false,
+  isShowFps: true,
+  dps: 5,
+  maxLength: 2,
+  maxCycles: 3,
+  speed: 5,
+  logData: '',
+  bridge: null,
+  pages: null,
+  pageStack: ['main'],
+});
