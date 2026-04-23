@@ -44,7 +44,6 @@ import {
 import FpsConuter from './fps-conuter.ts';
 import PageController from './page-controller.ts';
 import Model from './model.ts';
-import Settings from './settings.ts';
 import Core from './core.ts';
 
 export default class MatrixRain extends PageController {
@@ -140,14 +139,11 @@ export default class MatrixRain extends PageController {
 
   /** starts interwals to generate and process drops */
   start = async () => {
-    // this.stop();
-    // Model.state.logData = '';
-
     this._isRunning = true;
     this._setStage(this._stage);
     this.renderWebApp();
-    await this.reRender();
     this.log('started');
+    await this.reRender();
   };
 
   stop = async () => {
@@ -172,9 +168,14 @@ export default class MatrixRain extends PageController {
     this._clearBuffer();
     this._drops.clear();
     await this.reRender();
-    this.renderWebApp();
+    await sleep(200);
     this.log('reset');
   };
+
+  onBack() {
+    super.onBack();
+    this.start();
+  }
 
   onClick = async () => {
     await this.stop();
@@ -254,7 +255,7 @@ export default class MatrixRain extends PageController {
 
     if (this._isRunning) {
       // adding delay for simulator
-      if (Date.now() - t < 50) await sleep(150);
+      if (Date.now() - t < 50) await sleep(180);
       await this.reRender();
     }
   };

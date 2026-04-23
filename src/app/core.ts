@@ -89,12 +89,16 @@ export default class Core {
     this.activePage.rebuildPage();
   };
 
-  goBack = () => {
+  goBack = (page?: Page) => {
     if (this.state.pageStack.length > 1) {
-      this.state.pageStack.pop();
+      if (page && this.state.pageStack.indexOf(page) > -1) {
+        const index = this.state.pageStack.indexOf(page);
+        this.state.pageStack = this.state.pageStack.slice(0, index + 1);
+      } else {
+        this.state.pageStack.pop();
+      }
       this.log('back to', this.activePage.name, this.state.pageStack);
-      this.activePage.rebuildPage();
-      this.activePage.rebuildPage();
+      this.activePage.onBack();
     } else {
       this.log('exit modal ');
       // exit application

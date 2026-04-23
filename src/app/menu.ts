@@ -31,25 +31,28 @@ import PageController from './page-controller.ts';
 import Core from './core.ts';
 import MatrixRain from './matrix-rain.ts';
 
+type Option = `  back` | ' restart' | 'settings';
+const WIDTH = 100;
+
 export default class Menu extends PageController {
   readonly name: Page = 'menu';
 
-  readonly settings = ['back', 'restart', 'settings'];
+  readonly options: Option[] = [`  back`, ' restart', 'settings'];
 
   _cachedPage = {
     listObject: [
       // main fullscreen text renderer
       new ListContainerProperty({
-        xPosition: 0,
+        xPosition: VIEW.width / 2 - WIDTH / 2,
         yPosition: 0,
-        width: VIEW.width,
+        width: WIDTH,
         height: VIEW.height,
-        containerID: 1,
+        containerID: 10,
         containerName: 'menu',
         isEventCapture: 1,
         itemContainer: new ListItemContainerProperty({
-          itemCount: 3,
-          itemName: this.settings,
+          itemCount: this.options.length,
+          itemName: this.options,
         }),
       }),
     ],
@@ -64,19 +67,20 @@ export default class Menu extends PageController {
     super();
   }
 
-  showPausePage = () => {
-    this.rebuildPage();
-  };
+  onBack() {
+    // if retruned here, just continue redirecting back to main
+    Core.inst.goBack();
+    MatrixRain.inst.start();
+  }
 
   onClick = (event: EvenHubEvent) => {
     const selectedOption = event?.listEvent?.currentSelectItemIndex ?? 0;
-    this.log('clicked', this.settings[selectedOption]);
-    switch (this.settings[selectedOption]) {
-      case 'back':
-        Core.inst.goBack();
-        MatrixRain.inst.start();
+    this.log('clicked', this.options[selectedOption]);
+    switch (this.options[selectedOption]) {
+      case '  back':
+        this.onBack();
         break;
-      case 'restart':
+      case ' restart':
         Core.inst.goBack();
         MatrixRain.inst.restart();
         break;

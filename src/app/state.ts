@@ -27,7 +27,6 @@ import type PageController from './page-controller.ts';
 export type State = {
   isLogEnabled: boolean;
   isSkipIntro: boolean;
-  isMenuOpen: boolean;
   isShowFps: boolean;
   dps: number;
   maxLength: number;
@@ -42,7 +41,6 @@ export type State = {
 export const UNSAVEABLE_KEYS: (keyof State)[] = [
   'bridge',
   'logData',
-  'isMenuOpen',
   'pages',
   'pageStack',
 ];
@@ -50,10 +48,9 @@ export const UNSAVEABLE_KEYS: (keyof State)[] = [
 export const getInitState = (): State => ({
   isLogEnabled: true,
   isSkipIntro: false,
-  isMenuOpen: false,
   isShowFps: true,
   dps: 5,
-  maxLength: 2,
+  maxLength: 10,
   maxCycles: 3,
   speed: 5,
   logData: '',

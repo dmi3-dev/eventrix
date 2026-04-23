@@ -28,23 +28,45 @@ import {
 import { VIEW } from '../utils/consts.ts';
 import type { Page } from '../utils/types.ts';
 import PageController from './page-controller.ts';
+import Core from './core.ts';
+
+type Option =
+  | 'back'
+  | 'DPS'
+  | 'speed'
+  | 'max length'
+  | 'max cycles'
+  | 'skip intro';
 
 export default class Settings extends PageController {
   readonly name: Page = 'settings';
+
+  readonly options: Option[] = [
+    'back',
+    'DPS',
+    'speed',
+    'max length',
+    'max cycles',
+    'skip intro',
+  ];
 
   _cachedPage = {
     listObject: [
       // main fullscreen text renderer
       new ListContainerProperty({
-        xPosition: 0,
-        yPosition: 0,
-        width: VIEW.width,
-        height: VIEW.height,
-        containerID: 1,
+        xPosition: 1,
+        yPosition: 1,
+        width: 135,
+        height: VIEW.height - 2,
+        containerID: 20,
+        containerName: 'settings',
         isEventCapture: 1,
+        borderWidth: 2,
+        borderColor: 2,
+        paddingLength: 5,
         itemContainer: new ListItemContainerProperty({
-          itemCount: 3,
-          itemName: ['back', 'restart', 'options'],
+          itemCount: this.options.length,
+          itemName: this.options,
         }),
       }),
     ],
@@ -59,11 +81,26 @@ export default class Settings extends PageController {
     super();
   }
 
-  showPausePage = () => {
-    this.rebuildPage();
-  };
-
   onClick = (event: EvenHubEvent) => {
-    this.log('clicked', event);
+    const selectedOption = event?.listEvent?.currentSelectItemIndex ?? 0;
+    this.log('clicked', this.options[selectedOption]);
+    switch (this.options[selectedOption]) {
+      case 'back':
+        Core.inst.goBack('main');
+        break;
+      // case 'DPS':
+      //   break;
+      // case 'speed':
+      //   break;
+      // case 'max length':
+      //   break;
+      // case 'max cycles':
+      //   break;
+      // case 'skip intro':
+      //   break;
+      default:
+        this.rebuildPage();
+        break;
+    }
   };
 }

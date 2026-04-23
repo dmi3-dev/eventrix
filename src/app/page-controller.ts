@@ -68,13 +68,16 @@ export default abstract class PageController {
     await this.bridge.rebuildPageContainer(
       new RebuildPageContainer({ ...this._cachedPage }),
     );
-    this.start?.();
     this.log('rebuild', this.name);
   }
 
   setCachedPage = (containders: Partial<Container>) => {
     this._cachedPage = this.getUpdatedContainers(containders);
   };
+
+  onBack() {
+    this.rebuildPage();
+  }
 
   start?: () => void;
   stop?: () => void;
