@@ -30,6 +30,7 @@ import {
   MATRIX_TEXT_ID,
   MAX_DPS,
   MIN_DPS,
+  MIN_DROP_LEN,
   MONO_SPACE,
   REFRESH_DENOM,
   VIEW,
@@ -67,7 +68,7 @@ export default class MatrixRain extends PageController {
         yPosition: 0,
         width: VIEW.width,
         height: VIEW.height,
-        content: '',
+        content: this.buffer.join(''),
         containerID: MATRIX_TEXT_ID,
         isEventCapture: 0,
       }),
@@ -86,7 +87,6 @@ export default class MatrixRain extends PageController {
 
   // drpos rendered on screen
   private readonly _drops = new Set<Drop>();
-  private readonly _buffer: string[] = new Array(BUF_SIZE).fill(MONO_SPACE);
 
   private _process: Record<Stage, () => void> = {
     wakeup: () => this._processIntro(),
@@ -109,6 +109,10 @@ export default class MatrixRain extends PageController {
     rain: 1000 / REFRESH_DENOM,
   };
 
+  get buffer() {
+    return Model.state.fullScreenBuffer;
+  }
+
   /** initializes the bridge and creates startup page */
   async initPage() {
     // updating wakeup message with actual username
@@ -127,7 +131,7 @@ export default class MatrixRain extends PageController {
       // clearing all rows after where we show the text to aovoid it
       // it's ok, it will be reset to proper mono space buffer after wakeup stage
       for (let i = center; i < BUF_SIZE; i++) {
-        this._buffer[i] = '';
+        this.buffer[i] = '';
       }
     }
 
@@ -137,8 +141,15 @@ export default class MatrixRain extends PageController {
     this._intro.hasOffset = Math.floor(center - this._intro.hasYou.length / 2);
   }
 
+  async rebuildPage() {
+    // updating content ahead of time to avoid flash
+    this._cachedPage.textObject![0].content = this.buffer.join('');
+    return super.rebuildPage();
+  }
+
   /** starts interwals to generate and process drops */
   start = async () => {
+    if (Core.inst.page !== this.name) return;
     this._isRunning = true;
     this._setStage(this._stage);
     this.renderWebApp();
@@ -146,13 +157,12 @@ export default class MatrixRain extends PageController {
     await this.reRender();
   };
 
-  stop = async () => {
+  stop = () => {
     this._isRunning = false;
     clearInterval(this._runTimer);
     clearInterval(this._dropGenTimer);
     this._runTimer = undefined;
     this._dropGenTimer = undefined;
-    await sleep(200);
     this.log('stopped');
   };
 
@@ -162,13 +172,12 @@ export default class MatrixRain extends PageController {
   };
 
   reset = async () => {
-    await this.stop();
+    this.stop();
     this._stage = 'wakeup';
     this._resetIntroSteps();
     this._clearBuffer();
     this._drops.clear();
     await this.reRender();
-    await sleep(200);
     this.log('reset');
   };
 
@@ -178,8 +187,8 @@ export default class MatrixRain extends PageController {
   }
 
   onClick = async () => {
-    await this.stop();
-    Core.inst.goToPage('menu');
+    this.stop();
+    Core.inst.goToPage('settings');
   };
 
   onScrollUp = () => {
@@ -240,18 +249,20 @@ export default class MatrixRain extends PageController {
    * for full screen text. Making it handle the next re-render once previous
    * is done, leaving it outside of main run logic. */
   reRender = async () => {
+    if (Core.inst.page !== this.name) return;
+
     if (Model.state.isShowFps) {
       FpsConuter.countFps();
       FpsConuter.fpsMonoString
         .split('')
-        .forEach((c, i) => (this._buffer[i] = c));
+        .forEach((c, i) => (this.buffer[i] = c));
     }
 
     // first blocking to wait for render making it render
     // this._textUpdate.content = MONO_MATRIX_CHARS;
-    this._textUpdate.content = this._buffer.join('');
+    this._textUpdate.content = this.buffer.join('');
     const t = Date.now();
-    await this.bridge?.textContainerUpgrade(this._textUpdate);
+    await this.bridge.textContainerUpgrade(this._textUpdate);
 
     if (this._isRunning) {
       // adding delay for simulator
@@ -286,7 +297,7 @@ export default class MatrixRain extends PageController {
 
     if (this._stage === 'wakeup') {
       if (step < wakeup.length) {
-        this._buffer[step + wakeupOffset] = wakeup[step];
+        this.buffer[step + wakeupOffset] = wakeup[step];
         this._intro.step++;
       } else {
         // adding delay before next stage to give it a second to stay on screen
@@ -298,7 +309,7 @@ export default class MatrixRain extends PageController {
       }
     } else {
       if (step < hasYou.length) {
-        this._buffer[step + hasOffset] = hasYou[step];
+        this.buffer[step + hasOffset] = hasYou[step];
         this._intro.step++;
       } else {
         this._resetIntroSteps();
@@ -327,11 +338,11 @@ export default class MatrixRain extends PageController {
 
       if (drop.head < BUF_SIZE) {
         // we only add characters to buffer if head is within bounds
-        this._buffer[drop.head] = getRandomMatrixChar();
+        this.buffer[drop.head] = getRandomMatrixChar();
       }
       if (drop.tail < BUF_SIZE) {
         // erasing space behind drop end
-        this._buffer[drop.tail] = MONO_SPACE;
+        this.buffer[drop.tail] = MONO_SPACE;
       } else {
         // drop is fully out of view, removing it
         this._drops.delete(drop);
@@ -340,7 +351,7 @@ export default class MatrixRain extends PageController {
       // interval is randomly generated, it adds extra variety to drops
       // motion, making some of them slower while continuing circuling
       // throught random characters, like in real matrix rain
-      if (step % drop.interval === 0) {
+      if (step % drop.cycles === 0) {
         // adding full width essentially moves it down in Y position
         drop.head += MATRIX.width;
         drop.tail += MATRIX.width;
@@ -351,23 +362,12 @@ export default class MatrixRain extends PageController {
   private _generateDrop = () => {
     if (this._stage !== 'rain') return;
     const head = Math.floor(Math.random() * MATRIX.width);
-    const len = Math.ceil(Math.random() * (Model.state.maxLength - 2)) + 2;
+    const len =
+      Math.ceil(Math.random() * (Model.state.maxLength - MIN_DROP_LEN)) +
+      MIN_DROP_LEN;
     const tail = head - len * MATRIX.width;
-    const interval = Math.floor(Math.random() * Model.state.maxCycles) + 1;
-    this._drops.add({
-      head,
-      tail,
-      interval,
-      step: 0,
-      substep: 0,
-      delay: 0,
-    });
-  };
-
-  private _toggleFps = () => {
-    Model.state.isShowFps = !Model.state.isShowFps;
-    this._buffer[0] = MONO_SPACE;
-    this._buffer[1] = MONO_SPACE;
+    const cycles = Math.floor(Math.random() * Model.state.maxCycles) + 1;
+    this._drops.add({ head, tail, cycles, step: 0, substep: 0, delay: 0 });
   };
 
   private _setDps = (dps: number) => {
@@ -386,7 +386,7 @@ export default class MatrixRain extends PageController {
   /** fills entire buffer with mono spaces */
   private _clearBuffer = () => {
     for (let i = 0; i < BUF_SIZE; i++) {
-      this._buffer[i] = MONO_SPACE;
+      this.buffer[i] = MONO_SPACE;
     }
   };
 }

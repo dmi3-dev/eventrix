@@ -97,6 +97,12 @@ export default abstract class PageController {
         new TextContainerProperty({
           containerID: CONTROLLER_TEXT_ID,
           isEventCapture: 1,
+          xPosition: 0,
+          yPosition: 0,
+          // somehow if I set it to smaller it will lag
+          width: 100,
+          height: 100,
+          content: ' ',
         }),
       ];
     }

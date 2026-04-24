@@ -40,10 +40,10 @@ export type Intro = {
 export type Drop = {
   head: number;
   tail: number;
-  substep: number;
+  cycles: number;
   step: number;
+  substep: number;
   delay: number;
-  interval: number;
 };
 
 export type Container = {
@@ -54,4 +54,4 @@ export type Container = {
   imageObject: ImageContainerProperty[];
 };
 
-export type Page = 'main' | 'menu' | 'settings';
+export type Page = 'main' | 'settings';

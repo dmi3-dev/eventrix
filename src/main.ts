@@ -29,7 +29,10 @@ const main = async () => {
   await Core.inst.initialize();
 
   await MatrixRain.inst.initPage();
-  setTimeout(() => Core.inst.goToPage('settings'), 500);
+  // setTimeout(() => {
+  //   Core.inst.goToPage('settings');
+  //   MatrixRain.inst.stop();
+  // }, 1000);
   await MatrixRain.inst.start();
 };
 

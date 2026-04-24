@@ -30,7 +30,6 @@ import Model from './model.ts';
 import AppLogger from './app-logger.ts';
 import MatrixRain from './matrix-rain.ts';
 import Settings from './settings.ts';
-import Menu from './menu.ts';
 
 export default class Core {
   private static _inst: Core;
@@ -50,14 +49,16 @@ export default class Core {
     return Model.state;
   }
 
+  get page() {
+    return this.state.pageStack.at(-1) ?? 'main';
+  }
+
   get activePage() {
     if (!this.state.pages) {
       this.log('Pages not initialized');
       throw new Error('Pages not initialized');
     }
-    const pageName = this.state.pageStack.at(-1);
-    // trusting that it was initialized
-    return this.state.pages![pageName ?? 'main'];
+    return this.state.pages[this.page];
   }
 
   /** must be called at very start of the application */
@@ -69,7 +70,6 @@ export default class Core {
 
     this.state.pages = {
       main: MatrixRain.inst,
-      menu: Menu.inst,
       settings: Settings.inst,
     };
 

@@ -44,10 +44,8 @@ export default class AppLogger {
     if (logs) {
       logs.innerHTML = Model.state.logData;
 
-      // scroll down if was at the bottom
-      if (logs.scrollTop + logs.clientHeight >= logs.scrollHeight - 30) {
-        logs.scrollTop = logs.scrollHeight;
-      }
+      // auto scroll down
+      logs.scrollTop = logs.scrollHeight;
     }
   };
 }
