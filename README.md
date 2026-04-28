@@ -1,30 +1,9 @@
-# eventrix
-Most useless app on EvenHub, but it would be wrong not to make it for this display.
+# Code Rain [formely eventrix]
 
 ![screenshot](./docs/preview.png)
 
+>Simulates the Matrix rain effect. Probably the most useless app on Even Hub, but it had to be made.
+>Now has settings to customize the simulation.
+
 ### fun and discoveries
 Figured out how to draw monospace ascii and other unicode characters, check [utils.ts](./src/utils/utils.ts) for function and [consts.ts](./src/utils/consts.ts) for set of characters
-
-
-### controls
-
-- tap: open menu
-  - resume
-  - restart
-  - options
-- double tap: exit modal
-
-### options
-- drops per second
-- drop max length
-- drop fall speed
-- skip intro
-
-### dev
-
-add simulator to bin to be able to run `sim`
-```shell
-cd node_modules/.bin
-ln -s ../@evenrealities/sim-linux-x64/bin/evenhub-simulator .
-```
