@@ -90,8 +90,8 @@ export default class MatrixRain extends PageController {
     hasOffset: 0,
   };
   private _interval: Record<Stage, number> = {
-    wakeup: 205, // giving it slightly more time than typical glasses refresh rate
-    hasYou: 205,
+    wakeup: 200,
+    hasYou: 200,
     rain: 1000 / REFRESH_DENOM,
   };
 

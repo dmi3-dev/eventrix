@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "sim": "evenhub-simulator http://localhost:5173",
     "qr": "evenhub qr --url http://192.168.1.134:5173",
-    "pack": "evenhub pack app.json dist -o eventrix.ehpk"
+    "pack": "evenhub pack app.json dist -o codeRain.ehpk"
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.9",

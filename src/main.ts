@@ -33,8 +33,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </div>
 
     <div class="description">
-      <h4>Most useless app on Even Hub, but it would be wrong not to make it for this display.</h4>
-      <p>TODO</p>
+      <p>Simulates the Matrix rain effect. Probably the most useless app on Even Hub, but it had to be made.</p>
+      <p>Tap to open settings and customize the simulation.</p>
     </div>
 
     <div class="code" id="logs">${Model.state.logData}</div>
