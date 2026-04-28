@@ -20,7 +20,14 @@
  * SOFTWARE.
  */
 
+import {
+  ImageContainerProperty,
+  ListContainerProperty,
+  TextContainerProperty,
+} from '@evenrealities/even_hub_sdk';
+
 export type Stage = 'wakeup' | 'hasYou' | 'rain';
+export type NumericOptionType = 'dps' | 'speed' | 'maxLength' | 'maxCycles';
 
 export type Intro = {
   wakeup: string;
@@ -34,8 +41,18 @@ export type Intro = {
 export type Drop = {
   head: number;
   tail: number;
-  substep: number;
+  cycles: number;
   step: number;
+  substep: number;
   delay: number;
-  interval: number;
 };
+
+export type Container = {
+  createHiddenController: boolean;
+  containerTotalNum: number;
+  listObject: ListContainerProperty[];
+  textObject: TextContainerProperty[];
+  imageObject: ImageContainerProperty[];
+};
+
+export type Page = 'main' | 'settings';

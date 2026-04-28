@@ -1,5 +1,3 @@
-// noinspection JSUnusedGlobalSymbols
-
 /*
  * Copyright (c) 2026 dmi3
  *
@@ -24,102 +22,95 @@
 
 import {
   CreateStartUpPageContainer,
-  type EvenHubEvent,
   OsEventTypeList,
-  TextContainerProperty,
   waitForEvenAppBridge,
 } from '@evenrealities/even_hub_sdk';
-import { CONTROLLER_TEXT_ID } from '../utils/consts.ts';
+import type { Page } from '../utils/types.ts';
 import Model from './model.ts';
+import AppLogger from './app-logger.ts';
+import MatrixRain from './matrix-rain.ts';
+import Settings from './settings.ts';
 
-export default abstract class Controller {
+export default class Core {
+  private static _inst: Core;
+  public static get inst(): Core {
+    if (!Core._inst) Core._inst = new Core();
+    return Core._inst;
+  }
+  private constructor() {}
+
+  log = AppLogger.log;
+
   get bridge() {
     return Model.state.bridge!;
   }
 
-  /** this must be executed before any other logic can use bridge */
-  async initPage(
-    containders: TextContainerProperty[],
-    onBack?: () => void,
-    useInvisibleController = true,
-  ) {
+  get state() {
+    return Model.state;
+  }
+
+  get page() {
+    return this.state.pageStack.at(-1) ?? 'main';
+  }
+
+  get activePage() {
+    if (!this.state.pages) {
+      this.log('Pages not initialized');
+      throw new Error('Pages not initialized');
+    }
+    return this.state.pages[this.page];
+  }
+
+  /** must be called at very start of the application */
+  initialize = async () => {
     if (!Model.state.bridge) {
       Model.state.bridge = await waitForEvenAppBridge();
     }
 
-    if (onBack) {
-      this.onBack = onBack;
-    }
+    this.state.pages = {
+      main: MatrixRain.inst,
+      settings: Settings.inst,
+    };
 
-    const textObject = [...containders];
-    if (useInvisibleController) {
-      textObject.push(
-        // controller container to avoid shifts of main text on swipes
-        new TextContainerProperty({
-          containerID: CONTROLLER_TEXT_ID,
-          isEventCapture: 1,
-        }),
-      );
-    }
-
-    const pageContainer = new CreateStartUpPageContainer({
-      containerTotalNum: textObject.length,
-      textObject,
-    });
-
-    await Model.state.bridge.createStartUpPageContainer(pageContainer);
+    // starup page is created once at the start,
+    // after that only page update and rebuild is called
+    await this.bridge.createStartUpPageContainer(
+      new CreateStartUpPageContainer({
+        ...this.state.pages.main.getUpdatedContainers(),
+      }),
+    );
     this._initEvents();
-  }
-
-  onClick?: (event: EvenHubEvent) => void;
-  onDobleClick = (_: EvenHubEvent) => {
-    // All ER apps use double click to go back and exit, should be overwritten
-    // only in very special cases
-    this.onBack();
-  };
-  onScrollUp?: (event: EvenHubEvent) => void;
-  onScrollDown?: (event: EvenHubEvent) => void;
-  onLongPress?: (event: EvenHubEvent) => void;
-
-  onBack = () => {
-    // exit by default, can be overwritten in initPage
-    this.bridge.shutDownPageContainer(1);
   };
 
-  /** for dev use */
-  log = (...values: any[]) => {
-    if (!Model.state.isLogEnabled) return;
+  goToPage = (page: Page) => {
+    this.state.pageStack.push(page);
+    this.log('navigating to', page);
+    this.activePage.rebuildPage();
+  };
 
-    values.forEach((value: any) => {
-      if (typeof value !== 'string') {
-        value = JSON.stringify(value, null, 2);
+  goBack = (page?: Page) => {
+    if (this.state.pageStack.length > 1) {
+      if (page && this.state.pageStack.indexOf(page) > -1) {
+        const index = this.state.pageStack.indexOf(page);
+        this.state.pageStack = this.state.pageStack.slice(0, index + 1);
+      } else {
+        this.state.pageStack.pop();
       }
-      Model.state.logData += `${value} `;
-    });
-    Model.state.logData += '\n';
-
-    if (Model.state.logData.length > 5000) {
-      Model.state.logData = Model.state.logData.slice(4000);
-    }
-
-    const code = document.querySelector<HTMLDivElement>('.code');
-    if (code) {
-      code.innerHTML = Model.state.logData;
-
-      // scroll down if was at the bottom
-      if (code.scrollTop + code.clientHeight >= code.scrollHeight - 30) {
-        code.scrollTop = code.scrollHeight;
-      }
+      this.log('back to', this.activePage.name);
+      this.activePage.onBack();
+    } else {
+      this.log('exit modal');
+      // exit application
+      this.bridge.shutDownPageContainer(1);
     }
   };
 
-  private _initEvents(): void {
+  private _initEvents() {
     this.bridge.onEvenHubEvent(event => {
+      // this.log(event);
       const { sysEvent, textEvent, listEvent } = event;
 
       if (!sysEvent && !textEvent && !listEvent) return;
-
-      this.log(event);
 
       // documentation says, click and double click will be caught by textEvent
       // however my tests show that it is caught by sysEvent. Adding to be handled
@@ -129,16 +120,20 @@ export default abstract class Controller {
       switch (eventType) {
         case OsEventTypeList.CLICK_EVENT:
         case undefined: // SDK normalizes 0 to undefined in some cases
-          this.onClick?.(event);
+          this.activePage.onClick?.(event);
           break;
         case OsEventTypeList.DOUBLE_CLICK_EVENT:
-          this.onDobleClick(event);
+          if (this.activePage.onDobleClick) {
+            this.activePage.onDobleClick(event);
+          } else {
+            this.goBack();
+          }
           break;
         case OsEventTypeList.SCROLL_TOP_EVENT:
-          this.onScrollUp?.(event);
+          this.activePage.onScrollUp?.(event);
           break;
         case OsEventTypeList.SCROLL_BOTTOM_EVENT:
-          this.onScrollDown?.(event);
+          this.activePage.onScrollDown?.(event);
           break;
 
         // // for future reference

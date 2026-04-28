@@ -20,31 +20,32 @@
  * SOFTWARE.
  */
 
-import './style.css';
-import MatrixRain from './app/matrix-rain.ts';
-import Core from './app/core.ts';
-import Model from './app/model.ts';
-import { SAVEABLE_KEYS } from './app/state.ts';
+import Model from './model.ts';
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div class="app">
-    <div class="title">
-      <h1>Code Rain</h1>
-    </div>
+/** for dev use. Since there's no way to get console logs from even app, this will
+ * render logs on web app */
+export default class AppLogger {
+  static log = (...values: any[]) => {
+    if (!Model.state.isLogEnabled) return;
 
-    <div class="description">
-      <p>Simulates the Matrix rain effect. Probably the most useless app on Even Hub, but it had to be made.</p>
-      <p>Tap to open settings and customize the simulation.</p>
-    </div>
+    values.forEach((value: any) => {
+      if (typeof value !== 'string') {
+        value = JSON.stringify(value, null, 2);
+      }
+      Model.state.logData += `${value} `;
+    });
+    Model.state.logData += '\n';
 
-    <div class="code" id="logs">${Model.state.logData}</div>
-  </div>
-`;
+    if (Model.state.logData.length > 5000) {
+      Model.state.logData = Model.state.logData.slice(4000);
+    }
 
-const main = async () => {
-  await Core.inst.initialize();
-  await Model.loadState(SAVEABLE_KEYS);
-  await MatrixRain.inst.init();
-};
+    const logs = document.querySelector<HTMLDivElement>('#logs');
+    if (logs) {
+      logs.innerHTML = Model.state.logData;
 
-main();
+      // auto scroll down
+      logs.scrollTop = logs.scrollHeight;
+    }
+  };
+}

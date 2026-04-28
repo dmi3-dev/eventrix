@@ -20,31 +20,45 @@
  * SOFTWARE.
  */
 
-import './style.css';
-import MatrixRain from './app/matrix-rain.ts';
-import Core from './app/core.ts';
-import Model from './app/model.ts';
-import { SAVEABLE_KEYS } from './app/state.ts';
+import type { EvenAppBridge } from '@evenrealities/even_hub_sdk';
+import type { Page } from '../utils/types.ts';
+import { BUF_SIZE, IS_DEV, MONO_SPACE } from '../utils/consts.ts';
+import type PageController from './page-controller.ts';
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div class="app">
-    <div class="title">
-      <h1>Code Rain</h1>
-    </div>
-
-    <div class="description">
-      <p>Simulates the Matrix rain effect. Probably the most useless app on Even Hub, but it had to be made.</p>
-      <p>Tap to open settings and customize the simulation.</p>
-    </div>
-
-    <div class="code" id="logs">${Model.state.logData}</div>
-  </div>
-`;
-
-const main = async () => {
-  await Core.inst.initialize();
-  await Model.loadState(SAVEABLE_KEYS);
-  await MatrixRain.inst.init();
+export type State = {
+  isLogEnabled: boolean;
+  isShowFps: boolean;
+  isPlayIntro: boolean;
+  dps: number;
+  maxLength: number;
+  maxCycles: number;
+  speed: number;
+  logData: string;
+  bridge: EvenAppBridge | null;
+  pages: Record<Page, PageController> | null;
+  pageStack: Page[];
+  fullScreenBuffer: string[];
 };
 
-main();
+export const SAVEABLE_KEYS: (keyof State)[] = [
+  'isPlayIntro',
+  'dps',
+  'speed',
+  'maxLength',
+  'maxCycles',
+];
+
+export const getInitState = (): State => ({
+  isLogEnabled: IS_DEV,
+  isShowFps: IS_DEV,
+  isPlayIntro: true,
+  dps: 10,
+  maxLength: 10,
+  maxCycles: 3,
+  speed: 10,
+  logData: '',
+  bridge: null,
+  pages: null,
+  pageStack: ['main'],
+  fullScreenBuffer: new Array(BUF_SIZE).fill(MONO_SPACE),
+});
