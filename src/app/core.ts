@@ -63,7 +63,6 @@ export default class Core {
 
   /** must be called at very start of the application */
   initialize = async () => {
-    this.log('initializing core');
     if (!Model.state.bridge) {
       Model.state.bridge = await waitForEvenAppBridge();
     }
@@ -85,7 +84,7 @@ export default class Core {
 
   goToPage = (page: Page) => {
     this.state.pageStack.push(page);
-    this.log('going to', page, this.state.pageStack);
+    this.log('navigating to', page);
     this.activePage.rebuildPage();
   };
 
@@ -97,17 +96,16 @@ export default class Core {
       } else {
         this.state.pageStack.pop();
       }
-      this.log('back to', this.activePage.name, this.state.pageStack);
+      this.log('back to', this.activePage.name);
       this.activePage.onBack();
     } else {
-      this.log('exit modal ');
+      this.log('exit modal');
       // exit application
       this.bridge.shutDownPageContainer(1);
     }
   };
 
   private _initEvents() {
-    this.log('initializing events');
     this.bridge.onEvenHubEvent(event => {
       // this.log(event);
       const { sysEvent, textEvent, listEvent } = event;
@@ -149,6 +147,5 @@ export default class Core {
           break;
       }
     });
-    this.log('events initialized');
   }
 }

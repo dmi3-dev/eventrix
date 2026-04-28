@@ -23,10 +23,10 @@
  */
 
 import {
-  CreateStartUpPageContainer,
   type EvenHubEvent,
   RebuildPageContainer,
   TextContainerProperty,
+  TextContainerUpgrade,
 } from '@evenrealities/even_hub_sdk';
 import { CONTROLLER_TEXT_ID } from '../utils/consts.ts';
 import type { Container, Page } from '../utils/types.ts';
@@ -38,10 +38,19 @@ export default abstract class PageController {
 
   // used to auto rebuild page from what was initiated or custom rebuilt
   protected abstract _cachedPage: Partial<Container>;
+  protected _textUpdate = new TextContainerUpgrade({
+    containerID: -1,
+    content: '',
+  });
+
   log = AppLogger.log;
 
   get bridge() {
     return Model.state.bridge!;
+  }
+
+  get state() {
+    return Model.state;
   }
 
   /** Called to rebuild current page into this, with option to override the
@@ -87,6 +96,12 @@ export default abstract class PageController {
   onScrollDown?: (event: EvenHubEvent) => void;
   onLongPress?: (event: EvenHubEvent) => void;
 
+  async updateText(id: number, text: string) {
+    this._textUpdate.containerID = id;
+    this._textUpdate.content = text;
+    await this.bridge.textContainerUpgrade(this._textUpdate);
+  }
+
   getUpdatedContainers(containers?: Partial<Container>) {
     containers ??= this._cachedPage;
     const { listObject, imageObject, createHiddenController } = containers;
@@ -115,7 +130,7 @@ export default abstract class PageController {
       this.log('Text and list count exceeded limit of 8.');
     }
 
-    if (textAndListCount > 4) {
+    if (imgCount > 4) {
       this.log('Image count exceeded limit of 4.');
     }
 

@@ -23,17 +23,28 @@
 import './style.css';
 import MatrixRain from './app/matrix-rain.ts';
 import Core from './app/core.ts';
+import Model from './app/model.ts';
+import { SAVEABLE_KEYS } from './app/state.ts';
+
+document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+  <div class="app">
+    <div class="title">
+      <h1>Code Rain</h1>
+    </div>
+
+    <div class="description">
+      <h4>Most useless app on Even Hub, but it would be wrong not to make it for this display.</h4>
+      <p>TODO</p>
+    </div>
+
+    <div class="code" id="logs">${Model.state.logData}</div>
+  </div>
+`;
 
 const main = async () => {
-  MatrixRain.inst.renderWebApp();
   await Core.inst.initialize();
-
-  await MatrixRain.inst.initPage();
-  // setTimeout(() => {
-  //   Core.inst.goToPage('settings');
-  //   MatrixRain.inst.stop();
-  // }, 1000);
-  await MatrixRain.inst.start();
+  await Model.loadState(SAVEABLE_KEYS);
+  await MatrixRain.inst.init();
 };
 
 main();

@@ -20,107 +20,102 @@
  * SOFTWARE.
  */
 
-import {
-  TextContainerProperty,
-  TextContainerUpgrade,
-} from '@evenrealities/even_hub_sdk';
+import { TextContainerProperty } from '@evenrealities/even_hub_sdk';
 import {
   CYCLES_DESC,
-  DESC_TEXT_ID,
   DPS_DESC,
-  EDIT_TEXT_ID,
   INTRO_DESC,
   LENGTH_DESC,
   MATRIX,
   MATRIX_TEXT_ID,
+  MAX,
+  MENU_HEIGHT,
   MENU_TEXT_ID,
+  MENU_WIDTH,
+  MIN,
   MONO_SPACE,
+  NUM_OPTION,
+  OPTIONS,
+  OPTIONS_TOOLTIP,
+  OPTIONS_TOOLTIP_RESTART,
+  PADDING,
+  RIGHT_X_POS,
+  SETTING_TEXT_ID,
+  SETTINGS_TOOLTIP,
   SPEED_DESC,
+  TOOLTIP_TEXT_ID,
   VIEW,
+  Y_POS,
 } from '../utils/consts.ts';
-import type { Container, Page } from '../utils/types.ts';
+import type { Container, NumericOptionType, Page } from '../utils/types.ts';
 import PageController from './page-controller.ts';
 import Core from './core.ts';
 import Model from './model.ts';
-import { toMonospace } from '../utils/utils.ts';
+import { round } from '../utils/utils.ts';
 import MatrixRain from './matrix-rain.ts';
-
-const MENU_WIDTH = 115;
-const MENU_HEIGHT = 187;
-const Y_POS = Math.round(VIEW.height / 2 - MENU_HEIGHT / 2);
-const RIGHT_X_POS = MENU_WIDTH + 20;
-
-const OPTIONS = ['restart', 'dps', 'speed', 'length', 'cycles', 'intro'];
-
-const TITLES = [
-  ' ',
-  toMonospace('drops per second'),
-  toMonospace('speed'),
-  toMonospace('drop max length'),
-  toMonospace('drop max cycles'),
-  toMonospace('skip intro'),
-];
-
-const DESC = [
-  ' ',
-  DPS_DESC,
-  SPEED_DESC,
-  LENGTH_DESC,
-  CYCLES_DESC,
-  INTRO_DESC,
-  // RESTART_DESC,
-];
 
 export default class Settings extends PageController {
   readonly name: Page = 'settings';
 
+  inMenu = true;
   optionIndex = 0;
+
+  private _menuContainer = new TextContainerProperty({
+    xPosition: 1,
+    yPosition: Y_POS,
+    width: MENU_WIDTH,
+    height: MENU_HEIGHT,
+    containerID: MENU_TEXT_ID,
+    borderWidth: 2,
+    borderColor: 1,
+    paddingLength: PADDING,
+    content: this.menuString,
+    isEventCapture: 0,
+    containerName: 'menu',
+  });
+
+  private _settingContainer = new TextContainerProperty({
+    xPosition: RIGHT_X_POS,
+    yPosition: Y_POS,
+    width: VIEW.width - RIGHT_X_POS,
+    height: MENU_HEIGHT,
+    containerID: SETTING_TEXT_ID,
+    borderWidth: 2,
+    borderColor: 1,
+    paddingLength: PADDING,
+    content: ' ',
+    isEventCapture: 0,
+    containerName: 'description',
+  });
+
+  private _matrixContainer = new TextContainerProperty({
+    xPosition: 0,
+    yPosition: 0,
+    width: VIEW.width,
+    height: VIEW.height,
+    content: this.matrixString,
+    containerID: MATRIX_TEXT_ID,
+    isEventCapture: 0,
+  });
+
+  private _tooltipContainer = new TextContainerProperty({
+    xPosition: 0,
+    yPosition: Y_POS + MENU_HEIGHT,
+    width: VIEW.width,
+    height: 50,
+    paddingLength: PADDING,
+    content: ' ',
+    containerID: TOOLTIP_TEXT_ID,
+    isEventCapture: 0,
+  });
 
   _cachedPage: Partial<Container> = {
     createHiddenController: true,
     textObject: [
-      new TextContainerProperty({
-        xPosition: 0,
-        yPosition: 0,
-        width: VIEW.width,
-        height: VIEW.height,
-        content: this.bufferString,
-        containerID: MATRIX_TEXT_ID,
-        isEventCapture: 0,
-      }),
-      new TextContainerProperty({
-        xPosition: 1,
-        yPosition: Y_POS,
-        width: MENU_WIDTH,
-        height: MENU_HEIGHT,
-        containerID: MENU_TEXT_ID,
-        borderWidth: 2,
-        borderColor: 2,
-        paddingLength: 8,
-        content: this.optionsString,
-        isEventCapture: 0,
-        containerName: 'menu',
-      }),
-      new TextContainerProperty({
-        xPosition: RIGHT_X_POS,
-        yPosition: 0,
-        width: VIEW.width - RIGHT_X_POS,
-        height: VIEW.height - Y_POS,
-        containerID: DESC_TEXT_ID,
-        content: ' ',
-        isEventCapture: 0,
-        containerName: 'description',
-      }),
-      new TextContainerProperty({
-        xPosition: RIGHT_X_POS,
-        yPosition: VIEW.height - 100,
-        width: VIEW.width - RIGHT_X_POS,
-        height: 50,
-        containerID: EDIT_TEXT_ID,
-        content: ' value edit ',
-        isEventCapture: 0,
-        containerName: 'value-edit',
-      }),
+      this._menuContainer,
+      this._settingContainer,
+      this._tooltipContainer,
+      this._matrixContainer,
     ],
   };
 
@@ -137,22 +132,41 @@ export default class Settings extends PageController {
     return OPTIONS[this.optionIndex];
   }
 
-  get optionsString() {
+  get menuString() {
     return OPTIONS.map((o, i) =>
       i === this.optionIndex ? `・${o}・` : `${MONO_SPACE}${o}`,
     ).join('\n');
   }
 
-  get bufferString() {
-    this.log(this.option);
+  get matrixString() {
     if (this.optionIndex !== 0) return ' ';
     return Model.state.fullScreenBuffer
       .map((c, i) =>
-        // replacing all the first characters in each row with empty space
+        // replacing first 6 characters in each row with empty space
         // to clear up where menu shows up
-        i % MATRIX.width < 6 ? MONO_SPACE : c,
+        // and clearing last row for tooltips
+        i % MATRIX.width < 6 || i > MATRIX.width * (MATRIX.height - 1)
+          ? MONO_SPACE
+          : c,
       )
       .join('');
+  }
+
+  get settingString() {
+    switch (this.optionIndex) {
+      case 1:
+        return `Drops per second: ${this.state.dps} ${DPS_DESC}`;
+      case 2:
+        return `Speed: ${this.state.speed} ${SPEED_DESC}`;
+      case 3:
+        return `Drop max length: ${this.state.maxLength} ${LENGTH_DESC} ${this.state.maxLength}.`;
+      case 4:
+        return `Drop max cycles: ${this.state.maxCycles} ${CYCLES_DESC} ${this.state.maxCycles}.`;
+      case 5:
+        return `Intro enabled: ${this.state.isPlayIntro ? 'Yes' : 'No'} ${INTRO_DESC}`;
+      default:
+        return '';
+    }
   }
 
   async rebuildPage() {
@@ -161,70 +175,111 @@ export default class Settings extends PageController {
   }
 
   updateCachedPage() {
-    this._cachedPage.textObject?.forEach((c, i) => {
-      if (i === 0) c.content = this.bufferString;
-      else if (i === 1) c.content = this.optionsString;
-    });
+    this._matrixContainer.content = this.matrixString;
+    this._menuContainer.content = this.menuString;
+    this._settingContainer.content = this.settingString;
+    this._tooltipContainer.content = this.inMenu
+      ? this.optionIndex
+        ? OPTIONS_TOOLTIP
+        : OPTIONS_TOOLTIP_RESTART
+      : SETTINGS_TOOLTIP;
+
+    // updating active border to indicate which container is active
+    this._menuContainer.borderColor = this.inMenu ? 2 : 0;
+    const settingMult = this.optionIndex === 0 ? 0 : 1;
+    this._settingContainer.borderColor = (this.inMenu ? 0 : 2) * settingMult;
   }
 
   update() {
-    this.bridge.textContainerUpgrade(
-      new TextContainerUpgrade({
-        containerID: MENU_TEXT_ID,
-        content: this.optionsString,
-      }),
-    );
-    if (
-      this.optionIndex === 0 ||
-      this.optionIndex === 1 ||
-      this.optionIndex === OPTIONS.length - 1
-    ) {
-      this.bridge.textContainerUpgrade(
-        new TextContainerUpgrade({
-          containerID: MATRIX_TEXT_ID,
-          content: this.bufferString,
-        }),
-      );
+    if (this.inMenu) {
+      this.updateText(MENU_TEXT_ID, this.menuString);
+      if (this.optionIndex < 2 || this.optionIndex === OPTIONS.length - 1) {
+        // this.updateText(MATRIX_TEXT_ID, this.matrixString);
+        this.rebuildPage();
+      }
     }
-    this.bridge.textContainerUpgrade(
-      new TextContainerUpgrade({
-        containerID: DESC_TEXT_ID,
-        content: TITLES[this.optionIndex] + DESC[this.optionIndex],
-      }),
-    );
+    this.updateText(SETTING_TEXT_ID, this.settingString);
   }
 
   onClick = () => {
-    this.log('clicked', this.option);
-    switch (this.option) {
-      case 'restart':
-        Core.inst.goBack();
-        MatrixRain.inst.restart();
-        break;
-      // case 'dps':
-      //   break;
-      // case 'speed':
-      //   break;
-      // case 'max length':
-      //   break;
-      // case 'max cycles':
-      //   break;
-      // case 'skip intro':
-      //   break;
-      default:
-        break;
+    if (this.option === 'restart') {
+      Core.inst.goBack();
+      MatrixRain.inst.restart();
+    } else {
+      // switching focus/control between menu and setting
+      this.inMenu = !this.inMenu;
+      this.rebuildPage();
     }
   };
 
-  onScrollDown = () => {
-    this.optionIndex = (this.optionIndex + 1) % OPTIONS.length;
-    this.log('onScrollDown', this.optionIndex);
+  onScrollUp = () => {
+    if (this.inMenu) {
+      this.optionIndex =
+        (this.optionIndex - 1 + OPTIONS.length) % OPTIONS.length;
+    } else {
+      switch (this.optionIndex) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+          this._increaseNumValue(NUM_OPTION[this.optionIndex]);
+          break;
+        case 5:
+          this.state.isPlayIntro = !this.state.isPlayIntro;
+          break;
+        default:
+          break;
+      }
+    }
     this.update();
   };
 
-  onScrollUp = () => {
-    this.optionIndex = (this.optionIndex - 1 + OPTIONS.length) % OPTIONS.length;
-    this.log('onScrollDown', this.optionIndex);
+  onScrollDown = () => {
+    if (this.inMenu) {
+      this.optionIndex = (this.optionIndex + 1) % OPTIONS.length;
+    } else {
+      switch (this.optionIndex) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+          this._decreaseNumValue(NUM_OPTION[this.optionIndex]);
+          break;
+        case 5:
+          this.state.isPlayIntro = !this.state.isPlayIntro;
+          break;
+        default:
+          break;
+      }
+    }
     this.update();
   };
+
+  private _increaseNumValue(valueType: NumericOptionType) {
+    let value = Model.state[valueType];
+    const hasDecimals = MIN[valueType] < 1 && MIN[valueType] > 0;
+    if (hasDecimals && value < 1) {
+      value = round(value + 0.1, 1);
+    } else {
+      value = Math.floor(value + 1);
+    }
+    Model.state[valueType] = Math.max(
+      MIN[valueType],
+      Math.min(MAX[valueType], value),
+    );
+  }
+
+  private _decreaseNumValue(valueType: NumericOptionType) {
+    let value = Model.state[valueType];
+    const hasDecimals = MIN[valueType] < 1 && MIN[valueType] > 0;
+    if (hasDecimals && value < 1.1) {
+      value = round(value - 0.1, 1);
+    } else {
+      value = Math.floor(value - 1);
+    }
+    Model.state[valueType] = Math.max(
+      MIN[valueType],
+      Math.min(MAX[valueType], value),
+    );
+  }
 }

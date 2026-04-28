@@ -22,7 +22,7 @@
 
 import isEqual from 'lodash.isequal';
 import AppLogger from './app-logger.ts';
-import { getInitState, type State, UNSAVEABLE_KEYS } from './state.ts';
+import { getInitState, type State } from './state.ts';
 
 export default class Model {
   static state: State = getInitState();
@@ -52,43 +52,40 @@ export default class Model {
   }
 
   /** if custom state is provided it will save just that, otherwise will save all state */
-  static saveState = async (state?: Partial<State>) => {
+  static saveState = async (states: (keyof State)[]) => {
     if (!Model.state.bridge) {
-      AppLogger.log('bridge is not initialized');
+      AppLogger.log('bridge is not initialized to save state');
       return;
     }
-    await Promise.all(
-      Object.entries(state || Model.state)
-        .filter(([key]) => !UNSAVEABLE_KEYS.includes(key as keyof State))
-        .map(([key, value]) => {
-          return Model.state.bridge!.setLocalStorage(
-            key,
-            JSON.stringify(value),
-          );
-        }),
+    return await Promise.all(
+      states.map(key => {
+        return Model.state.bridge!.setLocalStorage(
+          key,
+          JSON.stringify(Model.state[key]),
+        );
+      }),
     );
   };
 
-  static loadState = async (state?: Partial<State>) => {
+  static loadState = async (states: (keyof State)[]) => {
     if (!Model.state.bridge) {
-      AppLogger.log('bridge is not initialized');
+      AppLogger.log('bridge is not initialized to load state');
       return;
     }
     const entries = await Promise.all(
-      Object.keys(state || Model.state)
-        .filter(key => !UNSAVEABLE_KEYS.includes(key as keyof State))
-        .map(async key => {
-          const value = await Model.state.bridge!.getLocalStorage(key);
-          return [key, value] as const;
-        }),
+      states.map(async key => {
+        const value = await Model.state.bridge!.getLocalStorage(key);
+        return [key, value] as const;
+      }),
     );
 
-    const loadedState = Object.fromEntries(
-      entries
-        .filter(([, raw]) => raw !== null && raw !== undefined)
-        .map(([key, raw]) => [key, JSON.parse(raw as string)]),
-    ) as Partial<State>;
-
-    Model.setState(loadedState);
+    entries.forEach(([key, raw]) => {
+      if (!raw) return;
+      const value = JSON.parse(raw);
+      if (typeof value === typeof Model.state[key]) {
+        // @ts-ignore : typing is wrong
+        Model.state[key] = value;
+      }
+    });
   };
 }

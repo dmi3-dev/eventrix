@@ -20,32 +20,23 @@
  * SOFTWARE.
  */
 
-import {
-  TextContainerProperty,
-  TextContainerUpgrade,
-} from '@evenrealities/even_hub_sdk';
+import { TextContainerProperty } from '@evenrealities/even_hub_sdk';
 import {
   BUF_SIZE,
   MATRIX,
   MATRIX_TEXT_ID,
-  MAX_DPS,
-  MIN_DPS,
   MIN_DROP_LEN,
   MONO_SPACE,
   REFRESH_DENOM,
   VIEW,
 } from '../utils/consts.ts';
 import type { Container, Drop, Intro, Page, Stage } from '../utils/types.ts';
-import {
-  getRandomMatrixChar,
-  round,
-  sleep,
-  toMonospace,
-} from '../utils/utils.ts';
+import { getRandomMatrixChar, sleep, toMonospace } from '../utils/utils.ts';
 import FpsConuter from './fps-conuter.ts';
 import PageController from './page-controller.ts';
 import Model from './model.ts';
 import Core from './core.ts';
+import { SAVEABLE_KEYS } from './state.ts';
 
 export default class MatrixRain extends PageController {
   readonly name: Page = 'main';
@@ -75,12 +66,6 @@ export default class MatrixRain extends PageController {
     ],
   };
 
-  // even objects
-  private _textUpdate = new TextContainerUpgrade({
-    containerID: MATRIX_TEXT_ID,
-    content: '',
-  });
-
   // timers for processing
   private _runTimer?: number;
   private _dropGenTimer?: number;
@@ -88,12 +73,13 @@ export default class MatrixRain extends PageController {
   // drpos rendered on screen
   private readonly _drops = new Set<Drop>();
 
+  // noinspection JSUnusedGlobalSymbols
   private _process: Record<Stage, () => void> = {
-    wakeup: () => this._processIntro(),
-    hasYou: () => this._processIntro(),
+    wakeup: () => this._processWakeup(),
+    hasYou: () => this._processHasYou(),
     rain: () => this._processDrops(),
   };
-  private _stage: Stage = 'rain';
+  private _stage: Stage = 'wakeup';
   private _isRunning = false;
   private _intro: Intro = {
     wakeup: 'Wake up, Neo...',
@@ -114,7 +100,7 @@ export default class MatrixRain extends PageController {
   }
 
   /** initializes the bridge and creates startup page */
-  async initPage() {
+  async init() {
     // updating wakeup message with actual username
     const userInfo = await this.bridge.getUserInfo();
     const fifthRow = MATRIX.width * 4;
@@ -139,6 +125,7 @@ export default class MatrixRain extends PageController {
 
     // also calculating offset for next message
     this._intro.hasOffset = Math.floor(center - this._intro.hasYou.length / 2);
+    await this.restart();
   }
 
   async rebuildPage() {
@@ -152,8 +139,6 @@ export default class MatrixRain extends PageController {
     if (Core.inst.page !== this.name) return;
     this._isRunning = true;
     this._setStage(this._stage);
-    this.renderWebApp();
-    this.log('started');
     await this.reRender();
   };
 
@@ -163,7 +148,6 @@ export default class MatrixRain extends PageController {
     clearInterval(this._dropGenTimer);
     this._runTimer = undefined;
     this._dropGenTimer = undefined;
-    this.log('stopped');
   };
 
   restart = async () => {
@@ -173,76 +157,24 @@ export default class MatrixRain extends PageController {
 
   reset = async () => {
     this.stop();
-    this._stage = 'wakeup';
+    this._stage = this.state.isPlayIntro ? 'wakeup' : 'rain';
     this._resetIntroSteps();
     this._clearBuffer();
     this._drops.clear();
     await this.reRender();
-    this.log('reset');
   };
 
   onBack() {
     super.onBack();
     this.start();
+
+    // saving when exiting settings
+    Model.saveState(SAVEABLE_KEYS);
   }
 
   onClick = async () => {
     this.stop();
     Core.inst.goToPage('settings');
-  };
-
-  onScrollUp = () => {
-    if (Model.state.dps < 1) {
-      this._setDps(round(Model.state.dps + 0.1, 1));
-    } else {
-      this._setDps(Math.floor(Model.state.dps + 1));
-    }
-  };
-
-  onScrollDown = () => {
-    if (Model.state.dps < 1.1) {
-      this._setDps(round(Model.state.dps - 0.1, 1));
-    } else {
-      this._setDps(Math.floor(Model.state.dps - 1));
-    }
-  };
-
-  /** minimal html for app web view */
-  // todo: move out
-  renderWebApp = () => {
-    const app = document.querySelector<HTMLDivElement>('#app')!;
-    app.innerHTML = `
-    <div class="app">
-      <div class="title">
-        <h1>eventrix</h1>
-      </div>
-
-      <div class="description">
-        <h4>Most useless app on Even Hub, but it would be wrong not to make it for this display.</h4>
-        <p>It's generating <span class="highlight">${Model.state.dps}</span> drops per second. Swipe UP/DOWN to 
-        change drop rate.</p>
-      </div>
-
-      <div class="code" id="logs">${Model.state.logData}</div>
-
-      <div class="row" id="buttonContainer">
-        <button class="button" id="playButton">${this._isRunning ? 'STOP' : 'START'}</button>
-      </div>
-    </div>
-  `;
-
-    const playButton =
-      document.querySelector<HTMLButtonElement>('#playButton')!;
-
-    playButton?.addEventListener('click', async () => {
-      if (!this._isRunning) {
-        this.log('START');
-        await this.start();
-      } else {
-        this.log('STOP');
-        await this.reset();
-      }
-    });
   };
 
   /** the rate of rerender in glasses is very limited. We are getting 5 FPS
@@ -258,11 +190,8 @@ export default class MatrixRain extends PageController {
         .forEach((c, i) => (this.buffer[i] = c));
     }
 
-    // first blocking to wait for render making it render
-    // this._textUpdate.content = MONO_MATRIX_CHARS;
-    this._textUpdate.content = this.buffer.join('');
     const t = Date.now();
-    await this.bridge.textContainerUpgrade(this._textUpdate);
+    await this.updateText(MATRIX_TEXT_ID, this.buffer.join(''));
 
     if (this._isRunning) {
       // adding delay for simulator
@@ -292,31 +221,32 @@ export default class MatrixRain extends PageController {
   };
 
   /** processing intro stages */
-  private _processIntro = () => {
-    const { wakeup, step, wakeupOffset, hasYou, hasOffset } = this._intro;
-
-    if (this._stage === 'wakeup') {
-      if (step < wakeup.length) {
-        this.buffer[step + wakeupOffset] = wakeup[step];
-        this._intro.step++;
-      } else {
-        // adding delay before next stage to give it a second to stay on screen
-        setTimeout(() => {
-          this._resetIntroSteps();
-          this._clearBuffer();
-          this._setStage('hasYou');
-        }, 1000);
-      }
+  private _processWakeup = () => {
+    const { wakeup, step, wakeupOffset } = this._intro;
+    if (step < wakeup.length) {
+      this.buffer[step + wakeupOffset] = wakeup[step];
+      this._intro.step++;
     } else {
-      if (step < hasYou.length) {
-        this.buffer[step + hasOffset] = hasYou[step];
-        this._intro.step++;
-      } else {
+      // adding delay before next stage to give it a second to stay on screen
+      setTimeout(() => {
         this._resetIntroSteps();
-        // adding delay before next stage to give it a second to stay on screen
-        // not clearing, because it looks cool when it rains over the text
-        setTimeout(() => this._setStage('rain'), 1000);
-      }
+        this._clearBuffer();
+        this._setStage('hasYou');
+      }, 1000);
+    }
+  };
+
+  /** processing intro stages */
+  private _processHasYou = () => {
+    const { step, hasYou, hasOffset } = this._intro;
+    if (step < hasYou.length) {
+      this.buffer[step + hasOffset] = hasYou[step];
+      this._intro.step++;
+    } else {
+      this._resetIntroSteps();
+      // adding delay before next stage to give it a second to stay on screen
+      // not clearing, because it looks cool when it rains over the text
+      setTimeout(() => this._setStage('rain'), 1000);
     }
   };
 
@@ -366,21 +296,8 @@ export default class MatrixRain extends PageController {
       Math.ceil(Math.random() * (Model.state.maxLength - MIN_DROP_LEN)) +
       MIN_DROP_LEN;
     const tail = head - len * MATRIX.width;
-    const cycles = Math.floor(Math.random() * Model.state.maxCycles) + 1;
+    const cycles = Math.round(Math.random() * Model.state.maxCycles) + 1;
     this._drops.add({ head, tail, cycles, step: 0, substep: 0, delay: 0 });
-  };
-
-  private _setDps = (dps: number) => {
-    Model.state.dps = Math.max(MIN_DPS, Math.min(MAX_DPS, dps));
-
-    // change drop generation interval
-    clearInterval(this._dropGenTimer);
-    this._dropGenTimer = setInterval(
-      this._generateDrop,
-      1000 / Model.state.dps,
-    );
-    const highlight = document.querySelector<HTMLDivElement>('.highlight');
-    if (highlight) highlight.innerHTML = `${Model.state.dps}`;
   };
 
   /** fills entire buffer with mono spaces */

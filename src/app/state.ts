@@ -22,13 +22,13 @@
 
 import type { EvenAppBridge } from '@evenrealities/even_hub_sdk';
 import type { Page } from '../utils/types.ts';
-import { BUF_SIZE, MONO_SPACE } from '../utils/consts.ts';
+import { BUF_SIZE, IS_DEV, MONO_SPACE } from '../utils/consts.ts';
 import type PageController from './page-controller.ts';
 
 export type State = {
   isLogEnabled: boolean;
-  isSkipIntro: boolean;
   isShowFps: boolean;
+  isPlayIntro: boolean;
   dps: number;
   maxLength: number;
   maxCycles: number;
@@ -40,17 +40,18 @@ export type State = {
   fullScreenBuffer: string[];
 };
 
-export const UNSAVEABLE_KEYS: (keyof State)[] = [
-  'bridge',
-  'logData',
-  'pages',
-  'pageStack',
+export const SAVEABLE_KEYS: (keyof State)[] = [
+  'isPlayIntro',
+  'dps',
+  'speed',
+  'maxLength',
+  'maxCycles',
 ];
 
 export const getInitState = (): State => ({
-  isLogEnabled: true,
-  isSkipIntro: false,
-  isShowFps: true,
+  isLogEnabled: IS_DEV,
+  isShowFps: IS_DEV,
+  isPlayIntro: true,
   dps: 10,
   maxLength: 10,
   maxCycles: 3,

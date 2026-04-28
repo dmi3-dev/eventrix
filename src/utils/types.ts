@@ -27,6 +27,7 @@ import {
 } from '@evenrealities/even_hub_sdk';
 
 export type Stage = 'wakeup' | 'hasYou' | 'rain';
+export type NumericOptionType = 'dps' | 'speed' | 'maxLength' | 'maxCycles';
 
 export type Intro = {
   wakeup: string;
